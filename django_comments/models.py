@@ -11,6 +11,8 @@ from django.utils.encoding import python_2_unicode_compatible
 from django_comments.managers import CommentManager
 
 COMMENT_MAX_LENGTH = getattr(settings, 'COMMENT_MAX_LENGTH', 3000)
+COMMENT_PATH_SEPARATOR = getattr(settings, 'COMMENT_PATH_SEPARATOR', '/')
+COMMENT_PATH_DIGITS = getattr(settings, 'COMMENT_PATH_DIGITS', 10)
 
 
 class BaseCommentAbstractModel(models.Model):
@@ -48,6 +50,9 @@ class Comment(BaseCommentAbstractModel):
     A user comment about some object.
     """
 
+    parent = models.ForeignKey('self', null=True, blank=True, default=None, related_name='children', verbose_name=_('Parent'))
+    tree_path = models.TextField(_('Tree path'), editable=False, db_index=True)
+
     # Who posted this comment? If ``user`` is set then it was an authenticated
     # user; otherwise at least user_name should have been set and the comment
     # was posted by a non-authenticated user.
@@ -57,6 +62,7 @@ class Comment(BaseCommentAbstractModel):
     user_email = models.EmailField(_("user's email address"), blank=True)
     user_url = models.URLField(_("user's URL"), blank=True)
 
+    title = models.TextField(_('Title'), blank=True)
     comment = models.TextField(_('comment'), max_length=COMMENT_MAX_LENGTH)
 
     # Metadata about the comment
@@ -74,7 +80,7 @@ class Comment(BaseCommentAbstractModel):
     objects = CommentManager()
 
     class Meta:
-        db_table = "django_comments"
+        db_table = "comments"
         ordering = ('submit_date',)
         permissions = [("can_moderate", "Can moderate comments")]
         verbose_name = _('comment')
@@ -83,10 +89,34 @@ class Comment(BaseCommentAbstractModel):
     def __str__(self):
         return "%s: %s..." % (self.name, self.comment[:50])
 
+    @property
+    def depth(self):
+        return len(self.tree_path.split(COMMENT_PATH_SEPARATOR))
+
+    @property
+    def root_id(self):
+        return int(self.tree_path.split(COMMENT_PATH_SEPARATOR)[0])
+
+    @property
+    def root_path(self):
+        return Comment.objects.filter(pk__in=self.tree_path.split(COMMENT_PATH_SEPARATOR)[:-1])
+
     def save(self, *args, **kwargs):
+        skip_tree_path = kwargs.pop('skip_tree_path', False)
         if self.submit_date is None:
             self.submit_date = timezone.now()
+
         super(Comment, self).save(*args, **kwargs)
+
+        if skip_tree_path:
+            return None
+
+        tree_path = unicode(self.pk).zfill(COMMENT_PATH_DIGITS)
+        if self.parent:
+            tree_path = COMMENT_PATH_SEPARATOR.join((self.parent.tree_path, tree_path))
+
+        self.tree_path = tree_path
+        Comment.objects.filter(pk=self.pk).update(tree_path=self.tree_path)
 
     def _get_userinfo(self):
         """
@@ -186,7 +216,7 @@ class CommentFlag(models.Model):
     MODERATOR_APPROVAL = "moderator approval"
 
     class Meta:
-        db_table = 'django_comment_flags'
+        db_table = 'comments_flags'
         unique_together = [('user', 'comment', 'flag')]
         verbose_name = _('comment flag')
         verbose_name_plural = _('comment flags')
