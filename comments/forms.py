@@ -97,8 +97,21 @@ class CommentDetailsForm(CommentSecurityForm):
     name          = forms.CharField(label=_("Name"), max_length=50)
     email         = forms.EmailField(label=_("Email address"))
     url           = forms.URLField(label=_("URL"), required=False)
+    parent        = forms.IntegerField(required=False, widget=forms.HiddenInput)
     comment       = forms.CharField(label=_('Comment'), widget=forms.Textarea,
                                     max_length=COMMENT_MAX_LENGTH)
+
+    def __init__(self, target_object, parent=None, data=None, initial=None):
+        self.base_fields.insert(
+            self.base_fields.keyOrder.index('comment'), 'title',
+            forms.CharField(label=_('Title'), required=False, max_length=getattr(settings, 'COMMENTS_TITLE_MAX_LENGTH', 255))
+        )
+        self.parent = parent
+        if initial is None:
+            initial = {}
+        initial.update({'parent': self.parent})
+        super(CommentDetailsForm, self).__init__(target_object, data=data, initial=initial)
+
 
     def get_comment_object(self):
         """
@@ -138,6 +151,8 @@ class CommentDetailsForm(CommentSecurityForm):
             user_name    = self.cleaned_data["name"],
             user_email   = self.cleaned_data["email"],
             user_url     = self.cleaned_data["url"],
+            parent_id    = self.cleaned_data['parent'],
+            title        = self.cleaned_data['title'],
             comment      = self.cleaned_data["comment"],
             submit_date  = timezone.now(),
             site_id      = settings.SITE_ID,
