@@ -2,7 +2,7 @@
 Generic comment moderation
 ==========================
 
-.. module:: django_comments.moderation
+.. module:: comments.moderation
    :synopsis: Support for automatic comment moderation.
 
 Django's bundled comments application is extremely useful on its own,
@@ -10,14 +10,14 @@ but the amount of comment spam circulating on the Web today
 essentially makes it necessary to have some sort of automatic
 moderation system in place for any application which makes use of
 comments. To make this easier to handle in a consistent fashion,
-``django_comments.moderation`` provides a generic, extensible
+``comments.moderation`` provides a generic, extensible
 comment-moderation system which can be applied to any model or set of
 models which want to make use of Django's comment system.
 
 Overview
 ========
 
-The entire system is contained within ``django_comments.moderation``,
+The entire system is contained within ``comments.moderation``,
 and uses a two-step process to enable moderation for any given model:
 
 1. A subclass of :class:`CommentModerator`
@@ -53,7 +53,7 @@ new comment is posted on an ``Entry``:
 Accomplishing this is fairly straightforward and requires very little
 code::
 
-    from django_comments.moderation import CommentModerator, moderator
+    from comments.moderation import CommentModerator, moderator
 
     class EntryModerator(CommentModerator):
         email_notification = True
@@ -172,7 +172,7 @@ Registering models for moderation
 ---------------------------------
 
 The moderation system, represented by
-``django_comments.moderation.moderator`` is an instance of the class
+``comments.moderation.moderator`` is an instance of the class
 :class:`Moderator`, which allows registration and "unregistration" of models
 via two methods:
 
@@ -214,8 +214,8 @@ models with an instance of the subclass.
         Determines how moderation is set up globally. The base
         implementation in
         :class:`Moderator` does this by
-        attaching listeners to the :data:`~django_comments.signals.comment_will_be_posted`
-        and :data:`~django_comments.signals.comment_was_posted` signals from the
+        attaching listeners to the :data:`~comments.signals.comment_will_be_posted`
+        and :data:`~comments.signals.comment_was_posted` signals from the
         comment models.
 
     .. method:: pre_save_moderation(sender, comment, request, **kwargs)

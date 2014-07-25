@@ -3,8 +3,8 @@ from __future__ import absolute_import
 from django.core import mail
 from django.test.utils import override_settings
 
-from django_comments.models import Comment
-from django_comments.moderation import (moderator, CommentModerator,
+from comments.models import Comment
+from comments.moderation import (moderator, CommentModerator,
     AlreadyModerated)
 
 from . import CommentTestCase

@@ -4,8 +4,8 @@ import time
 
 from django.conf import settings
 
-from django_comments.forms import CommentForm
-from django_comments.models import Comment
+from comments.forms import CommentForm
+from comments.models import Comment
 
 from . import CommentTestCase
 from ..models import Article

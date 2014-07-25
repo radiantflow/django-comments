@@ -2,7 +2,7 @@
 The comment models
 ==================
 
-.. module:: django_comments.models
+.. module:: comments.models
    :synopsis: The comment models
 
 .. class:: Comment

@@ -6,9 +6,9 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import get_object_or_404, render_to_response
 from django.views.decorators.csrf import csrf_protect
 
-import django_comments
-from django_comments import signals
-from django_comments.views.utils import next_redirect, confirmation_view
+import comments
+from comments import signals
+from comments.views.utils import next_redirect, confirmation_view
 
 @csrf_protect
 @login_required
@@ -21,7 +21,7 @@ def flag(request, comment_id, next=None):
         comment
             the flagged `comments.comment` object
     """
-    comment = get_object_or_404(django_comments.get_model(), pk=comment_id, site__pk=settings.SITE_ID)
+    comment = get_object_or_404(comments.get_model(), pk=comment_id, site__pk=settings.SITE_ID)
 
     # Flag on POST
     if request.method == 'POST':
@@ -37,7 +37,7 @@ def flag(request, comment_id, next=None):
         )
 
 @csrf_protect
-@permission_required("django_comments.can_moderate")
+@permission_required("comments.can_moderate")
 def delete(request, comment_id, next=None):
     """
     Deletes a comment. Confirmation on GET, action on POST. Requires the "can
@@ -48,7 +48,7 @@ def delete(request, comment_id, next=None):
         comment
             the flagged `comments.comment` object
     """
-    comment = get_object_or_404(django_comments.get_model(), pk=comment_id, site__pk=settings.SITE_ID)
+    comment = get_object_or_404(comments.get_model(), pk=comment_id, site__pk=settings.SITE_ID)
 
     # Delete on POST
     if request.method == 'POST':
@@ -65,7 +65,7 @@ def delete(request, comment_id, next=None):
         )
 
 @csrf_protect
-@permission_required("django_comments.can_moderate")
+@permission_required("comments.can_moderate")
 def approve(request, comment_id, next=None):
     """
     Approve a comment (that is, mark it as public and non-removed). Confirmation
@@ -76,7 +76,7 @@ def approve(request, comment_id, next=None):
         comment
             the `comments.comment` object for approval
     """
-    comment = get_object_or_404(django_comments.get_model(), pk=comment_id, site__pk=settings.SITE_ID)
+    comment = get_object_or_404(comments.get_model(), pk=comment_id, site__pk=settings.SITE_ID)
 
     # Delete on POST
     if request.method == 'POST':
@@ -100,10 +100,10 @@ def perform_flag(request, comment):
     """
     Actually perform the flagging of a comment from a request.
     """
-    flag, created = django_comments.models.CommentFlag.objects.get_or_create(
+    flag, created = comments.models.CommentFlag.objects.get_or_create(
         comment = comment,
         user    = request.user,
-        flag    = django_comments.models.CommentFlag.SUGGEST_REMOVAL
+        flag    = comments.models.CommentFlag.SUGGEST_REMOVAL
     )
     signals.comment_was_flagged.send(
         sender  = comment.__class__,
@@ -114,10 +114,10 @@ def perform_flag(request, comment):
     )
 
 def perform_delete(request, comment):
-    flag, created = django_comments.models.CommentFlag.objects.get_or_create(
+    flag, created = comments.models.CommentFlag.objects.get_or_create(
         comment = comment,
         user    = request.user,
-        flag    = django_comments.models.CommentFlag.MODERATOR_DELETION
+        flag    = comments.models.CommentFlag.MODERATOR_DELETION
     )
     comment.is_removed = True
     comment.save()
@@ -131,10 +131,10 @@ def perform_delete(request, comment):
 
 
 def perform_approve(request, comment):
-    flag, created = django_comments.models.CommentFlag.objects.get_or_create(
+    flag, created = comments.models.CommentFlag.objects.get_or_create(
         comment = comment,
         user    = request.user,
-        flag    = django_comments.models.CommentFlag.MODERATOR_APPROVAL,
+        flag    = comments.models.CommentFlag.MODERATOR_APPROVAL,
     )
 
     comment.is_removed = False

@@ -4,9 +4,10 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext_lazy as _, ungettext
 
-from django_comments.models import Comment
-from django_comments import get_model
-from django_comments.views.moderation import perform_flag, perform_approve, perform_delete
+
+from comments.models import Comment
+from comments import get_model
+from comments.views.moderation import perform_flag, perform_approve, perform_delete
 
 
 class UsernameSearch(object):
@@ -48,7 +49,7 @@ class CommentsAdmin(admin.ModelAdmin):
         # Only superusers should be able to delete the comments from the DB.
         if not request.user.is_superuser and 'delete_selected' in actions:
             actions.pop('delete_selected')
-        if not request.user.has_perm('django_comments.can_moderate'):
+        if not request.user.has_perm('comments.can_moderate'):
             if 'approve_comments' in actions:
                 actions.pop('approve_comments')
             if 'remove_comments' in actions:

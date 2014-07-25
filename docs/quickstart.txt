@@ -10,7 +10,7 @@ To get started using the ``comments`` app, follow these steps:
    ``'django.contrib.sites'`` to :setting:`INSTALLED_APPS` and defining
    :setting:`SITE_ID`.
 
-#. Install the comments framework by adding ``'django_comments'`` to
+#. Install the comments framework by adding ``'comments'`` to
    :setting:`INSTALLED_APPS`.
 
 #. Run ``manage.py syncdb`` so that Django will create the comment tables.
@@ -21,7 +21,7 @@ To get started using the ``comments`` app, follow these steps:
 
         urlpatterns = patterns('',
             ...
-            (r'^comments/', include('django_comments.urls')),
+            (r'^comments/', include('comments.urls')),
             ...
         )
 
@@ -110,7 +110,7 @@ For example::
         ...
     {% endfor %}
 
-This returns a list of :class:`~django_comments.models.Comment` objects;
+This returns a list of :class:`~comments.models.Comment` objects;
 see :doc:`the comment model documentation <models>` for
 details.
 

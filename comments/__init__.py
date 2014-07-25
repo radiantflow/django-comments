@@ -3,14 +3,14 @@ from django.core import urlresolvers
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
 
-from django_comments.models import Comment
-from django_comments.forms import CommentForm
+from comments.models import Comment
+from comments.forms import CommentForm
 
-DEFAULT_COMMENTS_APP = 'django_comments'
+DEFAULT_COMMENTS_APP = 'comments'
 
 def get_comment_app():
     """
-    Get the comment app (i.e. "django_comments") as defined in the settings
+    Get the comment app (i.e. "comments") as defined in the settings
     """
     # Make sure the app's in INSTALLED_APPS
     comments_app = get_comment_app_name()
@@ -59,7 +59,7 @@ def get_form_target():
     if get_comment_app_name() != DEFAULT_COMMENTS_APP and hasattr(get_comment_app(), "get_form_target"):
         return get_comment_app().get_form_target()
     else:
-        return urlresolvers.reverse("django_comments.views.comments.post_comment")
+        return urlresolvers.reverse("comments.views.comment.post_comment")
 
 def get_flag_url(comment):
     """
@@ -68,7 +68,7 @@ def get_flag_url(comment):
     if get_comment_app_name() != DEFAULT_COMMENTS_APP and hasattr(get_comment_app(), "get_flag_url"):
         return get_comment_app().get_flag_url(comment)
     else:
-        return urlresolvers.reverse("django_comments.views.moderation.flag",
+        return urlresolvers.reverse("comments.views.moderation.flag",
                                     args=(comment.id,))
 
 def get_delete_url(comment):
@@ -78,7 +78,7 @@ def get_delete_url(comment):
     if get_comment_app_name() != DEFAULT_COMMENTS_APP and hasattr(get_comment_app(), "get_delete_url"):
         return get_comment_app().get_delete_url(comment)
     else:
-        return urlresolvers.reverse("django_comments.views.moderation.delete",
+        return urlresolvers.reverse("comments.views.moderation.delete",
                                     args=(comment.id,))
 
 def get_approve_url(comment):
@@ -88,5 +88,5 @@ def get_approve_url(comment):
     if get_comment_app_name() != DEFAULT_COMMENTS_APP and hasattr(get_comment_app(), "get_approve_url"):
         return get_comment_app().get_approve_url(comment)
     else:
-        return urlresolvers.reverse("django_comments.views.moderation.approve",
+        return urlresolvers.reverse("comments.views.moderation.approve",
                                     args=(comment.id,))

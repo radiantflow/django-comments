@@ -2,7 +2,7 @@
 Django "excontrib" Comments
 ===========================
 
-.. module:: django_comments
+.. module:: comments
    :synopsis: The package formerly known as "django.contrib.comments".
 
 .. highlightlang:: html+django

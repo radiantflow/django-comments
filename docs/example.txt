@@ -141,7 +141,7 @@ enable it in your project's ``urls.py``:
 .. code-block:: python
 
   from django.conf.urls import patterns
-  from django_comments.feeds import LatestCommentFeed
+  from comments.feeds import LatestCommentFeed
 
   urlpatterns = patterns('',
   # ...
@@ -175,7 +175,7 @@ following way:
 .. code-block:: python
 
    from django.db import models
-   from django_comments.moderation import CommentModerator, moderator
+   from comments.moderation import CommentModerator, moderator
 
    class Post(models.Model):
        title   = models.CharField(max_length = 255)

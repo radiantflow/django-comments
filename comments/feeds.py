@@ -2,7 +2,7 @@ from django.contrib.syndication.views import Feed
 from django.contrib.sites.models import get_current_site
 from django.utils.translation import ugettext as _
 
-import django_comments
+import comments
 
 class LatestCommentFeed(Feed):
     """Feed of latest comments on the current site."""
@@ -21,7 +21,7 @@ class LatestCommentFeed(Feed):
         return _("Latest comments on %(site_name)s") % dict(site_name=self.site.name)
 
     def items(self):
-        qs = django_comments.get_model().objects.filter(
+        qs = comments.get_model().objects.filter(
             site__pk = self.site.pk,
             is_public = True,
             is_removed = False,

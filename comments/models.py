@@ -8,7 +8,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 
-from django_comments.managers import CommentManager
+from comments.managers import CommentManager
 
 COMMENT_MAX_LENGTH = getattr(settings, 'COMMENT_MAX_LENGTH', 3000)
 COMMENT_PATH_SEPARATOR = getattr(settings, 'COMMENT_PATH_SEPARATOR', '/')

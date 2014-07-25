@@ -11,9 +11,9 @@ from django.utils.html import escape
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
-import django_comments
-from django_comments import signals
-from django_comments.views.utils import next_redirect, confirmation_view
+import comments
+from comments import signals
+from comments.views.utils import next_redirect, confirmation_view
 
 class CommentPostBadRequest(http.HttpResponseBadRequest):
     """
@@ -72,7 +72,7 @@ def post_comment(request, next=None, using=None):
     preview = "preview" in data
 
     # Construct the comment form
-    form = django_comments.get_form()(target, data=data)
+    form = comments.get_form()(target, data=data)
 
     # Check security information
     if form.security_errors():

@@ -1,7 +1,7 @@
 from django.conf.urls import patterns, include
 
 urlpatterns = patterns('',
-    (r'^', include('django_comments.urls')),
+    (r'^', include('comments.urls')),
 
     # Provide the auth system login and logout views
     (r'^accounts/login/$', 'django.contrib.auth.views.login', {'template_name': 'login.html'}),

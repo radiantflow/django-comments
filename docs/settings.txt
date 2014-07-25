@@ -1,7 +1,7 @@
 .. _settings-comments:
 
 =============================================
-Settings that ``django_comments`` understands
+Settings that ``comments`` understands
 =============================================
 
 .. setting:: COMMENTS_HIDE_REMOVED

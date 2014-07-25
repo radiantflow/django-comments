@@ -29,7 +29,7 @@ a Weblog::
 Then we create a ``CommentModerator`` subclass specifying some
 moderation options::
 
-    from django_comments.moderation import CommentModerator, moderator
+    from comments.moderation import CommentModerator, moderator
 
     class EntryModerator(CommentModerator):
         email_notification = True
@@ -63,8 +63,8 @@ from django.template import Context, loader
 from django.contrib.sites.models import get_current_site
 from django.utils import timezone
 
-import django_comments
-from django_comments import signals
+import comments
+from comments import signals
 
 class AlreadyModerated(Exception):
     """
@@ -287,8 +287,8 @@ class Moderator(object):
         from the comment models.
 
         """
-        signals.comment_will_be_posted.connect(self.pre_save_moderation, sender=django_comments.get_model())
-        signals.comment_was_posted.connect(self.post_save_moderation, sender=django_comments.get_model())
+        signals.comment_will_be_posted.connect(self.pre_save_moderation, sender=comments.get_model())
+        signals.comment_was_posted.connect(self.post_save_moderation, sender=comments.get_model())
 
     def register(self, model_or_iterable, moderation_class):
         """
