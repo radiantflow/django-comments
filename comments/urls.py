@@ -1,8 +1,8 @@
 from django.conf.urls import patterns, url
 
 urlpatterns = patterns('comments.views',
-    url(r'^post/$',          'comment.post_comment',       name='comments-post-comment'),
-    url(r'^posted/$',        'comment.comment_done',       name='comments-comment-done'),
+    url(r'^post/$',          'comment.post_comment',        name='comments-post-comment'),
+    url(r'^posted/$',        'comment.comment_done',        name='comments-comment-done'),
     url(r'^flag/(\d+)/$',    'moderation.flag',             name='comments-flag'),
     url(r'^flagged/$',       'moderation.flag_done',        name='comments-flag-done'),
     url(r'^delete/(\d+)/$',  'moderation.delete',           name='comments-delete'),
