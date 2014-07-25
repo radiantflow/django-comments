@@ -24,19 +24,23 @@ class CommentsAdmin(admin.ModelAdmin):
            {'fields': ('content_type', 'object_pk', 'site')}
         ),
         (_('Content'),
-           {'fields': ('user', 'user_name', 'user_email', 'user_url', 'comment')}
+           {'fields': ('user', 'user_name', 'user_email', 'user_url', 'title', 'comment')}
+        ),
+        (_('Hierarchy'),
+           {'fields': ('parent',)}
         ),
         (_('Metadata'),
            {'fields': ('submit_date', 'ip_address', 'is_public', 'is_removed')}
         ),
-     )
+    )
 
-    list_display = ('name', 'content_type', 'object_pk', 'ip_address', 'submit_date', 'is_public', 'is_removed')
+    list_display = ('name', 'title', 'content_type', 'object_pk', 'parent', 'ip_address', 'submit_date', 'is_public', 'is_removed')
     list_filter = ('submit_date', 'site', 'is_public', 'is_removed')
     date_hierarchy = 'submit_date'
     ordering = ('-submit_date',)
-    raw_id_fields = ('user',)
-    search_fields = ('comment', UsernameSearch(), 'user_name', 'user_email', 'user_url', 'ip_address')
+    raw_id_fields = ('parent', 'user',)
+    search_fields = ('title', 'comment', UsernameSearch(), 'user_name', 'user_email', 'user_url', 'ip_address')
+
     actions = ["flag_comments", "approve_comments", "remove_comments"]
 
     def get_actions(self, request):
