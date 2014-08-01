@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.encoding import smart_text
 
 import comments
+from comments.views.list import list_comments
 
 register = template.Library()
 
@@ -201,21 +202,7 @@ class RenderCommentListNode(CommentListNode):
 
     def render(self, context):
         ctype, object_pk = self.get_target_ctype_pk(context)
-        if object_pk:
-            template_search_list = [
-                "comments/%s/%s/list.html" % (ctype.app_label, ctype.model),
-                "comments/%s/list.html" % ctype.app_label,
-                "comments/list.html"
-            ]
-            qs = self.get_query_set(context)
-            context.push()
-            liststr = render_to_string(template_search_list, {
-                "comment_list" : self.get_context_value_from_queryset(context, qs)
-            }, context)
-            context.pop()
-            return liststr
-        else:
-            return ''
+        return list_comments(context['request'], ctype=ctype, object_pk=object_pk).content
 
 # We could just register each classmethod directly, but then we'd lose out on
 # the automagic docstrings-into-admin-docs tricks. So each node gets a cute

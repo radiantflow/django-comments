@@ -1,6 +1,7 @@
 from django.conf.urls import patterns, url
 
 urlpatterns = patterns('comments.views',
+    url(r'^list/(\w+\.\w+)/(\d+)/$', 'list.list_comments',       name='comments-list-comments'),
     url(r'^post/$',          'comment.post_comment',        name='comments-post-comment'),
     url(r'^posted/$',        'comment.comment_done',        name='comments-comment-done'),
     url(r'^flag/(\d+)/$',    'moderation.flag',             name='comments-flag'),
