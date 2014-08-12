@@ -3,9 +3,13 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.utils.encoding import smart_text
+from django.utils.safestring import mark_safe
+from django.utils.translation import ugettext as _
+
 
 import comments
 from comments.views.list import list_comments
+from comments import utils
 
 register = template.Library()
 
@@ -204,6 +208,28 @@ class RenderCommentListNode(CommentListNode):
         ctype, object_pk = self.get_target_ctype_pk(context)
         return list_comments(context['request'], ctype=ctype, object_pk=object_pk).content
 
+class RecurseCommentsNode(template.Node):
+    def __init__(self, template_nodes, queryset_var):
+        self.template_nodes = template_nodes
+        self.queryset_var = queryset_var
+
+    def _render_comment(self, context, comment):
+        bits = []
+        context.push()
+        for child in comment.get_children():
+            bits.append(self._render_comment(context, child))
+        context['comment'] = comment
+        context['children'] = mark_safe(''.join(bits))
+        rendered = self.template_nodes.render(context)
+        context.pop()
+        return rendered
+
+    def render(self, context):
+        queryset = self.queryset_var.resolve(context)
+        bits = [self._render_comment(context, comment) for comment in queryset]
+        return ''.join(bits)
+
+
 # We could just register each classmethod directly, but then we'd lose out on
 # the automagic docstrings-into-admin-docs tricks. So each node gets a cute
 # wrapper function that just exists to hold the docstring.
@@ -319,3 +345,35 @@ def get_comment_permalink(comment, anchor_pattern=None):
         return comment.get_absolute_url(anchor_pattern)
     return comment.get_absolute_url()
 
+
+@register.tag
+def recursecomments(parser, token):
+    """
+    Iterates over the comments in the tree, and renders the contained block for each comment.
+    This tag will recursively render children into the template variable {{ children }}.
+    Only one database query is required (children are cached for the whole tree)
+
+    Usage:
+            <ul>
+                {% recursecomments comments_list %}
+                    <li>
+                        {{ commant.titke }}
+                        {% if not comment.is_leaf_node %}
+                            <ul>
+                                {{ children }}
+                            </ul>
+                        {% endif %}
+                    </li>
+                {% endrecursecomments %}
+            </ul>
+    """
+    bits = token.contents.split()
+    if len(bits) != 2:
+        raise template.TemplateSyntaxError(_('%s tag requires a queryset') % bits[0])
+
+    queryset_var = template.Variable(bits[1])
+
+    template_nodes = parser.parse(('endrecursecomments',))
+    parser.delete_first_token()
+
+    return RecurseCommentsNode(template_nodes, queryset_var)
