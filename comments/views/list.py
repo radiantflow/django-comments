@@ -39,6 +39,16 @@ def _lookup_content_type(token):
 #def get_root_comments(ctype=None, object_pk=None, order_by='submit_date'):
 
 
+def get_sorted_root_comments(ctype, object_pk, request=None):
+    qs = utils.get_query_set(ctype, object_pk, root_only=True)
+    if qs:
+        return CommentSorter(qs, request=request).sort()
+
+def get_sorted_child_comments(qs, ctype, object_pk, request=None):
+    child_qs = utils.get_root_children(qs, ctype, object_pk)
+    if child_qs:
+        return CommentSorter(child_qs, request=request).sort()
+
 
 def list_comments(request, ctype=None, object_pk=None, root_only=True):
 
@@ -53,20 +63,14 @@ def list_comments(request, ctype=None, object_pk=None, root_only=True):
     if isinstance(ctype, basestring):
         ctype = _lookup_content_type(ctype)
     if isinstance(ctype, ContentType) and object_pk:
-        root_qs = utils.get_query_set(ctype, object_pk, root_only=True)
 
-        child_qs = utils.get_root_children(root_qs, ctype, object_pk)
-
-        sorter = CommentSorter(root_qs, request=request)
-        root_qs = sorter.sort()
-
-        tree = utils.cache_comment_children(root_qs, child_qs)
-        # try:
-        #     roots = root_qs
-        #
-        # except Exception as e:
-        #     e = e
-        #     return
+        try:
+            root_qs = get_sorted_root_comments(ctype, object_pk, request)
+            child_qs = get_sorted_child_comments(root_qs, ctype, object_pk, request)
+            tree = utils.cache_comment_children(root_qs, child_qs)
+        except Exception as e:
+             e = e
+             return
 
         #paginator = Paginator(, 30, request=request)
 
