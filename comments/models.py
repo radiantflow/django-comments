@@ -7,6 +7,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
+from mptt.models import MPTTModel, TreeForeignKey
 
 from comments.managers import CommentManager
 
@@ -45,13 +46,12 @@ class BaseCommentAbstractModel(models.Model):
 
 
 @python_2_unicode_compatible
-class Comment(BaseCommentAbstractModel):
+class Comment(MPTTModel, BaseCommentAbstractModel):
     """
     A user comment about some object.
     """
 
-    parent = models.ForeignKey('self', null=True, blank=True, default=None, related_name='children', verbose_name=_('Parent'))
-    tree_path = models.TextField(_('Tree path'), editable=False, db_index=True)
+    parent = TreeForeignKey('self', null=True, blank=True,  default=None, related_name='children', verbose_name=_('Parent'))
 
     # Who posted this comment? If ``user`` is set then it was an authenticated
     # user; otherwise at least user_name should have been set and the comment
@@ -79,9 +79,17 @@ class Comment(BaseCommentAbstractModel):
     # Manager
     objects = CommentManager()
 
+    class MPTTMeta:
+        # comments on one level will be ordered by date of creation
+        order_insertion_by=['submit_date']
+
+    #tree_path = models.TextField(_('Tree path'), editable=False, db_index=True)
+
+
     class Meta:
         db_table = "comments"
-        ordering = ('submit_date',)
+        ordering=['tree_id','lft']
+        #ordering = ('submit_date',)
         permissions = [("can_moderate", "Can moderate comments")]
         verbose_name = _('comment')
         verbose_name_plural = _('comments')
@@ -89,34 +97,34 @@ class Comment(BaseCommentAbstractModel):
     def __str__(self):
         return "%s: %s" % (self.name, self.title)
 
-    @property
-    def depth(self):
-        return len(self.tree_path.split(COMMENT_PATH_SEPARATOR))
+    #@property
+    #def depth(self):
+    #    return len(self.tree_path.split(COMMENT_PATH_SEPARATOR))
 
-    @property
-    def root_id(self):
-        return int(self.tree_path.split(COMMENT_PATH_SEPARATOR)[0])
+    #@property
+    #def root_id(self):
+    #    return int(self.tree_path.split(COMMENT_PATH_SEPARATOR)[0])
 
-    @property
-    def root_path(self):
-        return Comment.objects.filter(pk__in=self.tree_path.split(COMMENT_PATH_SEPARATOR)[:-1])
+    #@property
+    #def root_path(self):
+    #    return Comment.objects.filter(pk__in=self.tree_path.split(COMMENT_PATH_SEPARATOR)[:-1])
 
     def save(self, *args, **kwargs):
-        skip_tree_path = kwargs.pop('skip_tree_path', False)
+        #skip_tree_path = kwargs.pop('skip_tree_path', False)
         if self.submit_date is None:
             self.submit_date = timezone.now()
 
         super(Comment, self).save(*args, **kwargs)
 
-        if skip_tree_path:
-            return None
+        #if skip_tree_path:
+        #    return None
 
-        tree_path = unicode(self.pk).zfill(COMMENT_PATH_DIGITS)
-        if self.parent:
-            tree_path = COMMENT_PATH_SEPARATOR.join((self.parent.tree_path, tree_path))
+        #tree_path = unicode(self.pk).zfill(COMMENT_PATH_DIGITS)
+        #if self.parent:
+        #    tree_path = COMMENT_PATH_SEPARATOR.join((self.parent.tree_path, tree_path))
 
-        self.tree_path = tree_path
-        Comment.objects.filter(pk=self.pk).update(tree_path=self.tree_path)
+        #self.tree_path = tree_path
+        #Comment.objects.filter(pk=self.pk).update(tree_path=self.tree_path)
 
     def _get_userinfo(self):
         """
