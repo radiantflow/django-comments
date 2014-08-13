@@ -25,6 +25,7 @@ from comments import utils
 
 COMMENT_MODEL = comments.get_model()
 COMMENTS_PER_PAGE = getattr(settings, 'COMMENTS_PER_PAGE', 10)
+COMMENTS_ANCHOR = getattr(settings, 'COMMENTS_ANCHOR', 'comments')
 
 def _lookup_content_type(token):
     try:
@@ -38,18 +39,6 @@ def _lookup_content_type(token):
 
 
 #def get_root_comments(ctype=None, object_pk=None, order_by='submit_date'):
-
-
-def get_sorted_root_comments(ctype, object_pk, request=None):
-    qs = utils.get_query_set(ctype, object_pk, root_only=True)
-    if qs:
-        return CommentSorter(qs, request=request).sort()
-
-def get_sorted_child_comments(qs, ctype, object_pk, request=None):
-    child_qs = utils.get_root_children(qs, ctype, object_pk)
-    if child_qs:
-        return CommentSorter(child_qs, request=request).sort()
-
 
 def list_comments(request, ctype=None, object_pk=None, root_only=True):
 
@@ -66,10 +55,16 @@ def list_comments(request, ctype=None, object_pk=None, root_only=True):
     if isinstance(ctype, ContentType) and object_pk:
 
         try:
-            root_qs = get_sorted_root_comments(ctype, object_pk, request)
-            paginator = Paginator(root_qs, COMMENTS_PER_PAGE, request=request, anchor='comments')
+            root_qs = utils.get_query_set(ctype, object_pk, root_only=True)
+            sorter = CommentSorter(root_qs, request=request, anchor=COMMENTS_ANCHOR)
+            paginator = Paginator(sorter.sort(), COMMENTS_PER_PAGE, request=request, anchor=COMMENTS_ANCHOR)
             root_qs = paginator.page(page)
-            child_qs = get_sorted_child_comments(root_qs, ctype, object_pk, request)
+
+            child_qs = utils.get_root_children(root_qs, ctype, object_pk)
+            if child_qs:
+                child_sorter = CommentSorter(child_qs, request=request, anchor=COMMENTS_ANCHOR)
+                child_qs = child_sorter.sort()
+
             tree = utils.cache_comment_children(root_qs, child_qs)
         except Exception as e:
              e = e
@@ -96,6 +91,9 @@ def list_comments(request, ctype=None, object_pk=None, root_only=True):
         ]
         return render_to_response(template_search_list, {
             "comment_list" : comments,
+            'request': request,
+            'sort_dropdown': sorter.sort_dropdown,
+
         })
 
         #posts_output = render_to_string('posts/includes/' + template_file, {
