@@ -24,6 +24,7 @@ from comments.views.utils import next_redirect, confirmation_view
 from comments import utils
 
 COMMENT_MODEL = comments.get_model()
+COMMENTS_PER_PAGE = getattr(settings, 'COMMENTS_PER_PAGE', 10)
 
 def _lookup_content_type(token):
     try:
@@ -66,13 +67,14 @@ def list_comments(request, ctype=None, object_pk=None, root_only=True):
 
         try:
             root_qs = get_sorted_root_comments(ctype, object_pk, request)
+            paginator = Paginator(root_qs, COMMENTS_PER_PAGE, request=request, anchor='comments')
+            root_qs = paginator.page(page)
             child_qs = get_sorted_child_comments(root_qs, ctype, object_pk, request)
             tree = utils.cache_comment_children(root_qs, child_qs)
         except Exception as e:
              e = e
-             return
+             raise Http404
 
-        #paginator = Paginator(, 30, request=request)
 
         try:
             comments = tree
