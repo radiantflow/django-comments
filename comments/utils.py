@@ -80,7 +80,6 @@ def cache_comment_children(root_qs, child_qs):
 
     """
 
-    top_nodes = []
     all_nodes = {}
 
     if root_qs:
@@ -95,8 +94,6 @@ def cache_comment_children(root_qs, child_qs):
 
             # Add node to all nodes dict.
             all_nodes[obj.pk] = obj
-            # Add the root to the list of top nodes, which will be returned
-            top_nodes.append(obj)
 
         if child_qs:
 
@@ -121,5 +118,5 @@ def cache_comment_children(root_qs, child_qs):
                 #
 
 
-    return top_nodes
+    return root_qs
 

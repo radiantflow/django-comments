@@ -93,7 +93,7 @@ def list_comments(request, ctype=None, object_pk=None, root_only=True):
             "comments/list.html"
         ]
         return render_to_response(template_search_list, {
-            "comment_list" : list(comments)
+            "comment_list" : comments,
         })
 
         #posts_output = render_to_string('posts/includes/' + template_file, {
