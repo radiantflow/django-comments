@@ -7,6 +7,8 @@ from django.db import models
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.template.loader import render_to_string
+from django.template.response import TemplateResponse
+from django.http import Http404, HttpResponse, HttpResponseNotAllowed
 from django.utils.html import escape
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
@@ -14,6 +16,9 @@ from django.views.decorators.http import require_POST
 import comments
 from comments import signals
 from comments.views.utils import next_redirect, confirmation_view
+
+COMMENT_MODEL = comments.get_model()
+COMMENT_FORM = comments.get_form()
 
 class CommentPostBadRequest(http.HttpResponseBadRequest):
     """
@@ -26,6 +31,42 @@ class CommentPostBadRequest(http.HttpResponseBadRequest):
         if settings.DEBUG:
             self.content = render_to_string("comments/400-debug.html", {"why": why})
 
+
+def _lookup_content_object(data):
+    # Look up the object we're trying to comment about
+    ctype = data.get("content_type")
+    object_pk = data.get("object_pk")
+    parent_pk = data.get("parent_pk")
+
+    if parent_pk:
+        try:
+            parent_comment = COMMENT_MODEL.objects.get(pk=parent_pk)
+            target = parent_comment.content_object
+            model = target.__class__
+        except COMMENT_MODEL.DoesNotExist:
+            return CommentPostBadRequest(
+                "Parent comment with PK %r does not exist." % \
+                    escape(parent_pk))
+    elif ctype and object_pk:
+        try:
+            parent_comment = None
+            model = models.get_model(*ctype.split(".", 1))
+            target = model._default_manager.get(pk=object_pk)
+        except TypeError:
+            return CommentPostBadRequest(
+                "Invalid content_type value: %r" % escape(ctype))
+        except AttributeError:
+            return CommentPostBadRequest(
+                "The given content-type %r does not resolve to a valid model." % \
+                    escape(ctype))
+        except ObjectDoesNotExist:
+            return CommentPostBadRequest(
+                "No object matching content-type %r and object PK %r exists." % \
+                    (escape(ctype), escape(object_pk)))
+    else:
+        return CommentPostBadRequest("Missing content_type or object_pk field.")
+
+    return (target, parent_comment, model)
 
 @csrf_protect
 @require_POST
@@ -135,3 +176,35 @@ comment_done = confirmation_view(
     template="comments/posted.html",
     doc="""Display a "comment was posted" success page."""
 )
+
+
+
+def new_comment(request, parent_pk=None, content_type=None, object_pk=None, *args, **kwargs):
+    """
+    Display the form used to post a reply.
+
+    Expects a comment_id, and an optionnal 'is_ajax' parameter in request.GET.
+    """
+
+    is_ajax = request.GET.get('is_ajax') and '_ajax' or ''
+    data = {
+        'parent_pk': parent_pk,
+        'content_type': content_type,
+        'object_pk': object_pk,
+    }
+    response = _lookup_content_object(data)
+    if isinstance(response, HttpResponse):
+        return response
+    else:
+        target, parent_comment, model = response
+
+    # Construct the initial comment form
+    form = COMMENT_FORM(target, parent_comment=parent_comment)
+
+    template_list = [
+        "comments/%s_%s_new_form%s.html" % tuple(str(model._meta).split(".") + [is_ajax]),
+        "comments/%s_new_form%s.html" % (model._meta.app_label, is_ajax),
+        "comments/new_form%s.html" % is_ajax,
+    ]
+    return TemplateResponse(request, template_list, { "form" : form })
+

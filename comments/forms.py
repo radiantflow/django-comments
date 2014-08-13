@@ -21,9 +21,11 @@ class CommentSecurityForm(forms.Form):
     object_pk     = forms.CharField(widget=forms.HiddenInput)
     timestamp     = forms.IntegerField(widget=forms.HiddenInput)
     security_hash = forms.CharField(min_length=40, max_length=40, widget=forms.HiddenInput)
+    parent_pk     = forms.IntegerField(required=False, widget=forms.HiddenInput)
 
-    def __init__(self, target_object, data=None, initial=None):
+    def __init__(self, target_object, data=None, parent_comment=None, initial=None):
         self.target_object = target_object
+        self.parent_comment = parent_comment
         if initial is None:
             initial = {}
         initial.update(self.generate_security_data())
@@ -65,6 +67,7 @@ class CommentSecurityForm(forms.Form):
             'object_pk'     : str(self.target_object._get_pk_val()),
             'timestamp'     : str(timestamp),
             'security_hash' : self.initial_security_hash(timestamp),
+            'parent_pk'     : self.parent_comment and str(self.parent_comment.pk) or '',
         }
         return security_dict
 
@@ -97,20 +100,18 @@ class CommentDetailsForm(CommentSecurityForm):
     name          = forms.CharField(label=_("Name"), max_length=50)
     email         = forms.EmailField(label=_("Email address"))
     url           = forms.URLField(label=_("URL"), required=False)
-    parent        = forms.IntegerField(required=False, widget=forms.HiddenInput)
     comment       = forms.CharField(label=_('Comment'), widget=forms.Textarea,
                                     max_length=COMMENT_MAX_LENGTH)
 
-    def __init__(self, target_object, parent=None, data=None, initial=None):
+    def __init__(self, target_object, parent_comment=None, data=None, initial=None):
         self.base_fields.insert(
             self.base_fields.keyOrder.index('comment'), 'title',
             forms.CharField(label=_('Title'), required=False, max_length=getattr(settings, 'COMMENTS_TITLE_MAX_LENGTH', 255))
         )
-        self.parent = parent
         if initial is None:
             initial = {}
-        initial.update({'parent': self.parent})
-        super(CommentDetailsForm, self).__init__(target_object, data=data, initial=initial)
+        #initial.update({'parent': self.parent})
+        super(CommentDetailsForm, self).__init__(target_object, data=data, parent_comment=parent_comment, initial=initial)
 
 
     def get_comment_object(self):
@@ -145,18 +146,24 @@ class CommentDetailsForm(CommentSecurityForm):
         custom comment apps that override get_comment_model can override this
         method to add extra fields onto a custom comment model.
         """
+
+        parent_comment = None
+        parent_pk = self.cleaned_data.get("parent_pk")
+        if parent_pk:
+            parent_comment = self.get_comment_model().objects.get(pk=parent_pk)
+
         return dict(
             content_type = ContentType.objects.get_for_model(self.target_object),
             object_pk    = force_text(self.target_object._get_pk_val()),
             user_name    = self.cleaned_data["name"],
             user_email   = self.cleaned_data["email"],
             user_url     = self.cleaned_data["url"],
-            parent_id    = self.cleaned_data['parent'],
+            parent       = parent_comment,
             title        = self.cleaned_data['title'],
             comment      = self.cleaned_data["comment"],
             submit_date  = timezone.now(),
             site_id      = settings.SITE_ID,
-            is_public    = True,
+            is_public    = parent_comment and parent_comment.is_public or True,
             is_removed   = False,
         )
 
