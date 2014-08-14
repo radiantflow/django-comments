@@ -148,7 +148,6 @@ class CommentDetailsForm(CommentSecurityForm):
             user_email   = self.cleaned_data["email"],
             user_url     = self.cleaned_data["url"],
             parent       = parent_comment,
-            title        = self.cleaned_data['title'],
             comment      = self.cleaned_data["comment"],
             submit_date  = timezone.now(),
             site_id      = settings.SITE_ID,
