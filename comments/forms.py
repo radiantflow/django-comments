@@ -93,7 +93,7 @@ class CommentSecurityForm(forms.Form):
         value = "-".join(info)
         return salted_hmac(key_salt, value).hexdigest()
 
-class CommentDetailsForm(CommentSecurityForm):
+class CommentForm(CommentSecurityForm):
     """
     Handles the specific details of the comment (name, comment, etc.).
     """
@@ -102,6 +102,9 @@ class CommentDetailsForm(CommentSecurityForm):
     url           = forms.URLField(label=_("URL"), required=False)
     comment       = forms.CharField(label=_('Comment'), widget=forms.Textarea,
                                     max_length=COMMENT_MAX_LENGTH)
+    honeypot      = forms.CharField(required=False,
+                                    label=_('If you enter anything in this field '\
+                                            'your comment will be treated as spam'))
 
     def get_comment_object(self):
         """
@@ -191,11 +194,6 @@ class CommentDetailsForm(CommentSecurityForm):
                         ['"%s%s%s"' % (i[0], '-'*(len(i)-2), i[-1])
                          for i in bad_words], ugettext('and')))
         return comment
-
-class CommentForm(CommentDetailsForm):
-    honeypot      = forms.CharField(required=False,
-                                    label=_('If you enter anything in this field '\
-                                            'your comment will be treated as spam'))
 
     def clean_honeypot(self):
         """Check that nothing's been entered into the honeypot."""
