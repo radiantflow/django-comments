@@ -13,9 +13,9 @@ from comments.models import Comment
 
 COMMENT_MAX_LENGTH = getattr(settings,'COMMENT_MAX_LENGTH', 3000)
 
-class CommentSecurityForm(forms.Form):
+class CommentForm(forms.Form):
     """
-    Handles the security aspects (anti-spoofing) for comment forms.
+    Handles the all aspects of comment forms.
     """
     content_type  = forms.CharField(widget=forms.HiddenInput)
     object_pk     = forms.CharField(widget=forms.HiddenInput)
@@ -23,13 +23,22 @@ class CommentSecurityForm(forms.Form):
     security_hash = forms.CharField(min_length=40, max_length=40, widget=forms.HiddenInput)
     parent_pk     = forms.IntegerField(required=False, widget=forms.HiddenInput)
 
+    name          = forms.CharField(label=_("Name"), max_length=50)
+    email         = forms.EmailField(label=_("Email address"))
+    url           = forms.URLField(label=_("URL"), required=False)
+    comment       = forms.CharField(label=_('Comment'), widget=forms.Textarea,
+                                    max_length=COMMENT_MAX_LENGTH)
+    honeypot      = forms.CharField(required=False,
+                                    label=_('If you enter anything in this field '\
+                                            'your comment will be treated as spam'))
+
     def __init__(self, target_object, data=None, parent_comment=None, initial=None):
         self.target_object = target_object
         self.parent_comment = parent_comment
         if initial is None:
             initial = {}
         initial.update(self.generate_security_data())
-        super(CommentSecurityForm, self).__init__(data=data, initial=initial)
+        super(CommentForm, self).__init__(data=data, initial=initial)
 
     def security_errors(self):
         """Return just those errors associated with security"""
@@ -89,22 +98,10 @@ class CommentSecurityForm(forms.Form):
         Generate a HMAC security hash from the provided info.
         """
         info = (content_type, object_pk, timestamp)
-        key_salt = "django.contrib.forms.CommentSecurityForm"
+        key_salt = "django.contrib.forms.CommentForm"
         value = "-".join(info)
         return salted_hmac(key_salt, value).hexdigest()
 
-class CommentForm(CommentSecurityForm):
-    """
-    Handles the specific details of the comment (name, comment, etc.).
-    """
-    name          = forms.CharField(label=_("Name"), max_length=50)
-    email         = forms.EmailField(label=_("Email address"))
-    url           = forms.URLField(label=_("URL"), required=False)
-    comment       = forms.CharField(label=_('Comment'), widget=forms.Textarea,
-                                    max_length=COMMENT_MAX_LENGTH)
-    honeypot      = forms.CharField(required=False,
-                                    label=_('If you enter anything in this field '\
-                                            'your comment will be treated as spam'))
 
     def get_comment_object(self):
         """
