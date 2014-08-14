@@ -103,17 +103,6 @@ class CommentDetailsForm(CommentSecurityForm):
     comment       = forms.CharField(label=_('Comment'), widget=forms.Textarea,
                                     max_length=COMMENT_MAX_LENGTH)
 
-    def __init__(self, target_object, parent_comment=None, data=None, initial=None):
-        self.base_fields.insert(
-            self.base_fields.keyOrder.index('comment'), 'title',
-            forms.CharField(label=_('Title'), required=False, max_length=getattr(settings, 'COMMENTS_TITLE_MAX_LENGTH', 255))
-        )
-        if initial is None:
-            initial = {}
-        #initial.update({'parent': self.parent})
-        super(CommentDetailsForm, self).__init__(target_object, data=data, parent_comment=parent_comment, initial=initial)
-
-
     def get_comment_object(self):
         """
         Return a new (unsaved) comment object based on the information in this
