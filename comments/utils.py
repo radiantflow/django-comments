@@ -1,13 +1,26 @@
 from django.conf import settings
+from django import http
+from django.template.loader import render_to_string
 from django.utils.encoding import smart_text
 from django.utils.safestring import mark_safe
 
-import comments
 
+class CommentPostBadRequest(http.HttpResponseBadRequest):
+    """
+    Response returned when a comment post is invalid. If ``DEBUG`` is on a
+    nice-ish error message will be displayed (for debugging purposes), but in
+    production mode a simple opaque 400 page will be displayed.
+    """
+    def __init__(self, why):
+        super(CommentPostBadRequest, self).__init__()
+        if settings.DEBUG:
+            self.content = render_to_string("comments/400-debug.html", {"why": why})
 
-COMMENT_MODEL = comments.get_model()
 
 def get_query_set(ctype, object_pk, root_only=False, except_root=False, tree_ids=None):
+
+    import comments
+    COMMENT_MODEL = comments.get_model()
 
     qs = COMMENT_MODEL.objects.filter(
         content_type=ctype,

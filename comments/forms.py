@@ -9,11 +9,13 @@ from django.utils.text import get_text_list
 from django.utils import timezone
 from django.utils.translation import ungettext, ugettext, ugettext_lazy as _
 
-from comments.models import Comment
+from comments.models import Comment, CommentFlag
+from comments import signals
+from comments.utils import CommentPostBadRequest
 
 COMMENT_MAX_LENGTH = getattr(settings,'COMMENT_MAX_LENGTH', 3000)
 
-class CommentForm(forms.Form):
+class CommentForm(forms.ModelForm):
     """
     Handles the all aspects of comment forms.
     """
@@ -23,22 +25,31 @@ class CommentForm(forms.Form):
     security_hash = forms.CharField(min_length=40, max_length=40, widget=forms.HiddenInput)
     parent_pk     = forms.IntegerField(required=False, widget=forms.HiddenInput)
 
-    name          = forms.CharField(label=_("Name"), max_length=50)
-    email         = forms.EmailField(label=_("Email address"))
-    url           = forms.URLField(label=_("URL"), required=False)
+    user_name     = forms.CharField(label=_("Name"), max_length=50)
+    user_email    = forms.EmailField(label=_("Email address"))
+    user_url      = forms.URLField(label=_("URL"), required=False)
     comment       = forms.CharField(label=_('Comment'), widget=forms.Textarea,
                                     max_length=COMMENT_MAX_LENGTH)
     honeypot      = forms.CharField(required=False,
                                     label=_('If you enter anything in this field '\
                                             'your comment will be treated as spam'))
 
-    def __init__(self, target_object, data=None, parent_comment=None, initial=None):
-        self.target_object = target_object
-        self.parent_comment = parent_comment
-        if initial is None:
-            initial = {}
-        initial.update(self.generate_security_data())
-        super(CommentForm, self).__init__(data=data, initial=initial)
+    class Meta:
+        model = Comment
+        fields = ("user_name", "user_email", "user_url", "comment",
+                  "timestamp", "security_hash", "honeypot")
+
+    def __init__(self, data=None, request=None, *args, **kwargs):
+        self.request = request
+        super(CommentForm, self).__init__(data=data, *args, **kwargs)
+        # initiate the form with security data if no data was passed in.
+        if not data:
+            self.initial.update(self.generate_security_data())
+
+        #self.fields["user_name"].widget.attrs["readonly"] = "readonly"
+        #self.fields["user_email"].widget.attrs["readonly"] = "readonly"
+        #self.fields["user_url"].widget.attrs["placeholder"] = "Homepage"
+
 
     def security_errors(self):
         """Return just those errors associated with security"""
@@ -62,22 +73,32 @@ class CommentForm(forms.Form):
         return actual_hash
 
     def clean_timestamp(self):
-        """Make sure the timestamp isn't too far (> 2 hours) in the past."""
+        """
+        When editing comments, make sure timestamp matches the one on the instance, for new comments
+        make sure the timestamp isn't too far (> 2 hours) in the past
+        """
         ts = self.cleaned_data["timestamp"]
-        if time.time() - ts > (2 * 60 * 60):
+        if self.instance.submit_date:
+            if not ts == time.mktime(self.instance.submit_date.timetuple()):
+                raise forms.ValidationError("Timestamp check failed")
+        elif time.time() - ts > (2 * 60 * 60):
             raise forms.ValidationError("Timestamp check failed")
         return ts
 
     def generate_security_data(self):
         """Generate a dict of security data for "initial" data."""
-        timestamp = int(time.time())
+        if self.instance.submit_date:
+            timestamp = int(time.mktime(self.instance.submit_date.timetuple()))
+        else:
+            timestamp = int(time.time())
         security_dict =   {
-            'content_type'  : str(self.target_object._meta),
-            'object_pk'     : str(self.target_object._get_pk_val()),
+            'content_type'  : str(self.instance.content_type.pk),
+            'object_pk'     : str(self.instance.content_object.pk),
             'timestamp'     : str(timestamp),
             'security_hash' : self.initial_security_hash(timestamp),
-            'parent_pk'     : self.parent_comment and str(self.parent_comment.pk) or '',
+            'parent_pk'     : self.instance.parent and str(self.instance.parent.pk) or '',
         }
+
         return security_dict
 
     def initial_security_hash(self, timestamp):
@@ -87,10 +108,11 @@ class CommentForm(forms.Form):
         """
 
         initial_security_dict = {
-            'content_type' : str(self.target_object._meta),
-            'object_pk' : str(self.target_object._get_pk_val()),
+            'content_type' : str(self.instance.content_type.pk),
+            'object_pk' : str(self.instance.content_object.pk),
             'timestamp' : str(timestamp),
           }
+
         return self.generate_security_hash(**initial_security_dict)
 
     def generate_security_hash(self, content_type, object_pk, timestamp):
@@ -144,9 +166,9 @@ class CommentForm(forms.Form):
         return dict(
             content_type = ContentType.objects.get_for_model(self.target_object),
             object_pk    = force_text(self.target_object._get_pk_val()),
-            user_name    = self.cleaned_data["name"],
-            user_email   = self.cleaned_data["email"],
-            user_url     = self.cleaned_data["url"],
+            user_name    = self.cleaned_data["user_name"],
+            user_email   = self.cleaned_data["user_email"],
+            user_url     = self.cleaned_data["user_url"],
             parent       = parent_comment,
             comment      = self.cleaned_data["comment"],
             submit_date  = timezone.now(),
@@ -198,3 +220,75 @@ class CommentForm(forms.Form):
         if value:
             raise forms.ValidationError(self.fields["honeypot"].label)
         return value
+
+    def visible_fields(self):
+        """
+        Returns a list of BoundField objects that aren't hidden fields.
+        The opposite of the hidden_fields() method.
+        """
+        fields = []
+        for field in self:
+            if self.request.user.is_authenticated() and field.name in ['user_name', 'user_email', 'user_url']:
+                continue
+            if not field.is_hidden:
+                fields.append(field)
+
+        return fields
+
+    def save(self, commit=True, send_signals=True):
+        """Save the comment, adding extra fields if required."""
+
+        if not self.request:
+            return super(CommentForm, self).save(commit=commit)
+
+        new = self.instance.pk is None
+        flag = None
+        created = None
+
+        if new:
+            self.instance.ip_address = self.request.META.get("REMOTE_ADDR", None)
+            if self.request.user.is_authenticated():
+                self.instance.user = self.request.user
+
+        # Signal that the comment is about to be saved
+        if send_signals:
+            if new:
+                signal_responses = signals.comment_will_be_posted.send(
+                    sender=self.instance.__class__,
+                    comment=self.instance,
+                    request=self.request
+                )
+
+                for (receiver, response) in signal_responses:
+                    if response == False:
+                        return CommentPostBadRequest(
+                        "comment_will_be_posted receiver %r killed the comment" % receiver.__name__)
+            else:
+                flag_label = "comment edited"
+                flag, created = CommentFlag.objects.get_or_create(
+                    comment = self.instance,
+                    user = self.request.user,
+                    flag = flag_label
+                )
+
+
+        comment = super(CommentForm, self).save(commit=commit)
+
+        if send_signals:
+            if new:
+                signals.comment_was_posted.send(
+                    sender=comment.__class__,
+                    comment=comment,
+                    request=self.request
+                )
+            else:
+                signals.comment_was_flagged.send(
+                    sender = comment.__class__,
+                    comment = comment,
+                    flag = flag,
+                    created = created,
+                    request = self.request
+            )
+
+        return comment
+
