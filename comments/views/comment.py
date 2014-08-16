@@ -17,52 +17,10 @@ from django.views.decorators.http import require_POST
 import comments
 from comments import signals
 from comments.views.utils import next_redirect, confirmation_view
-from comments.utils import CommentPostBadRequest
+from comments.utils import CommentPostBadRequest, lookup_content_object
 
 COMMENT_MODEL = comments.get_model()
 COMMENT_FORM = comments.get_form()
-
-def _lookup_content_object(data):
-    # Look up the object we're trying to comment about
-    ctype = data.get("content_type")
-    object_pk = data.get("object_pk")
-    parent_pk = data.get("parent_pk")
-
-    if parent_pk:
-        try:
-            parent_comment = COMMENT_MODEL.objects.get(pk=parent_pk)
-            target = parent_comment.content_object
-            model = target.__class__
-        except COMMENT_MODEL.DoesNotExist:
-            return CommentPostBadRequest(
-                "Parent comment with PK %r does not exist." % \
-                    escape(parent_pk))
-    elif ctype and object_pk:
-        try:
-            parent_comment = None
-            model = models.get_model(*ctype.split(".", 1))
-            target = model._default_manager.get(pk=object_pk)
-            # model._default_manager.using(using).get(pk=object_pk)
-        except TypeError:
-            return CommentPostBadRequest(
-                "Invalid content_type value: %r" % escape(ctype))
-        except AttributeError:
-            return CommentPostBadRequest(
-                "The given content-type %r does not resolve to a valid model." % \
-                    escape(ctype))
-        except ObjectDoesNotExist:
-            return CommentPostBadRequest(
-                "No object matching content-type %r and object PK %r exists." % \
-                    (escape(ctype), escape(object_pk)))
-        except (ValueError, ValidationError) as e:
-            return CommentPostBadRequest(
-                "Attempting go get content-type %r and object PK %r exists raised %s" % \
-                    (escape(ctype), escape(object_pk), e.__class__.__name__))
-
-    else:
-        return CommentPostBadRequest("Missing content_type or object_pk field.")
-
-    return (target, parent_comment, model)
 
 
 comment_done = confirmation_view(
@@ -102,7 +60,7 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
             'object_pk': object_pk,
         }
 
-        response = _lookup_content_object(data)
+        response = lookup_content_object(COMMENT_MODEL, data)
         if isinstance(response, HttpResponse):
             return response
         else:

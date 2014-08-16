@@ -1,8 +1,12 @@
 from django.conf import settings
 from django import http
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import models
 from django.template.loader import render_to_string
 from django.utils.encoding import smart_text
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
+
 
 
 class CommentPostBadRequest(http.HttpResponseBadRequest):
@@ -15,6 +19,50 @@ class CommentPostBadRequest(http.HttpResponseBadRequest):
         super(CommentPostBadRequest, self).__init__()
         if settings.DEBUG:
             self.content = render_to_string("comments/400-debug.html", {"why": why})
+
+
+def lookup_content_object(comment_model, data):
+    # Look up the object we're trying to comment about
+    ctype = data.get("content_type")
+    object_pk = data.get("object_pk")
+    parent_pk = data.get("parent_pk")
+
+    if parent_pk:
+        try:
+            parent_comment = comment_model.objects.get(pk=parent_pk)
+            target = parent_comment.content_object
+            model = target.__class__
+        except comment_model.DoesNotExist:
+            return CommentPostBadRequest(
+                "Parent comment with PK %r does not exist." % \
+                    escape(parent_pk))
+    elif ctype and object_pk:
+        try:
+            parent_comment = None
+            model = models.get_model(*ctype.split(".", 1))
+            target = model._default_manager.get(pk=object_pk)
+            # model._default_manager.using(using).get(pk=object_pk)
+        except TypeError:
+            return CommentPostBadRequest(
+                "Invalid content_type value: %r" % escape(ctype))
+        except AttributeError:
+            return CommentPostBadRequest(
+                "The given content-type %r does not resolve to a valid model." % \
+                    escape(ctype))
+        except ObjectDoesNotExist:
+            return CommentPostBadRequest(
+                "No object matching content-type %r and object PK %r exists." % \
+                    (escape(ctype), escape(object_pk)))
+        except (ValueError, ValidationError) as e:
+            return CommentPostBadRequest(
+                "Attempting go get content-type %r and object PK %r exists raised %s" % \
+                    (escape(ctype), escape(object_pk), e.__class__.__name__))
+
+    else:
+        return CommentPostBadRequest("Missing content_type or object_pk field.")
+
+    return (target, parent_comment, model)
+
 
 
 def get_query_set(ctype, object_pk, root_only=False, except_root=False, tree_ids=None):
