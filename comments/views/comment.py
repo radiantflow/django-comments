@@ -140,10 +140,10 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
 
         if form.is_valid():
             # Save the comment and signal that it was saved
-            form.save()
+            result = form.save()
             # Get comment url
             if not next:
-                next = utils.get_comment_url(comment_pk, request)
+                next = utils.get_comment_url(result._get_pk_val(), request)
             return next_redirect(request, fallback=next)
             #_get_pk_val()
         else:
