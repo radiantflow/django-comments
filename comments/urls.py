@@ -2,7 +2,7 @@ from django.conf.urls import patterns, url
 
 urlpatterns = patterns('comments.views',
     url(r'^list/(\w+\.\w+)/(\d+)/$',    'list.list_comments',           name='comments-list-comments'),
-
+    url(r'^view/(?P<comment_pk>\d+)/$', 'comment.view',                 name='comment-view'),
     url(r'^edit/(?P<comment_pk>\d+)/$', 'comment.edit',                 name='comment-edit'),
     url(r'^reply/(?P<parent_pk>\d+)/$', 'comment.edit',                 name='comment-reply'),
     url(r'^new/(?P<content_type>[\w.]+)/(?P<object_pk>\d+)/$',

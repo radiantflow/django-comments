@@ -1,13 +1,22 @@
+from __future__ import division
+from math import ceil
 from django.conf import settings
 from django import http
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
-from django.utils.encoding import smart_text
+from django.utils.encoding import smart_text, force_text
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
+from url_tools.helper import UrlHelper
 
+from comments.sorters import CommentSorter
 
+COMMENTS_PER_PAGE = getattr(settings, 'COMMENTS_PER_PAGE', 10)
+COMMENTS_ANCHOR = getattr(settings, 'COMMENTS_ANCHOR', 'comments')
 
 class CommentPostBadRequest(http.HttpResponseBadRequest):
     """
@@ -187,4 +196,63 @@ def cache_comment_children(root_qs, child_qs):
 
 
     return root_qs
+
+
+def get_comments_per_page(request):
+    return COMMENTS_PER_PAGE
+
+
+def get_top_level_comment(comment):
+    if comment.parent:
+        return get_top_level_comment(comment.parent)
+    else:
+        return comment
+
+
+def get_comment_index(target, comment, request=None):
+    qs = get_query_set(target=target, root_only=True)
+    sorter = CommentSorter(qs, request=request)
+    sorted_qs = sorter.sort()
+
+    comment_pk = comment._get_pk_val()
+    for index, item in enumerate(sorted_qs):
+        if item._get_pk_val() == comment_pk:
+            return index
+
+    return None
+
+def get_comment_page(target, comment, request=None):
+    index = get_comment_index(target, comment, request)
+    if isinstance(index, int):
+        comments_per_page = get_comments_per_page(request)
+        page = (index + 1) / comments_per_page
+        return int(ceil(page))
+
+    return None
+
+
+def get_comment_url(comment_pk, request=None):
+    import comments
+    comment = get_object_or_404(comments.get_model(), pk=comment_pk, site__pk=settings.SITE_ID)
+    top_level = get_top_level_comment(comment)
+    target = top_level.content_object
+    page = get_comment_page(target=target, comment=top_level, request=request)
+
+    if target and isinstance(page, int):
+        url = UrlHelper(target.get_absolute_url())
+
+        if page <= 1:
+            # Remove pager parameter as we want to go to the first page.
+            url.del_params('page')
+        else:
+            # Update pager parameter
+            url.update_query_data(page=page)
+
+        full_url = url.get_full_path()
+        full_url += '#comment-%s' % comment_pk
+
+    return full_url
+
+
+
 

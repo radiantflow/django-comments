@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import get_object_or_404, render_to_response
 from django.template import RequestContext
 from django.template.response import TemplateResponse
-from django.http import Http404, HttpResponse, HttpResponseNotAllowed
+from django.http import Http404, HttpResponse, HttpResponseNotAllowed, HttpResponseRedirect
 from django.utils.encoding import force_text
 from django.utils.html import escape
 from django.views.decorators.csrf import csrf_protect
@@ -16,12 +16,19 @@ from django.views.decorators.http import require_POST
 
 import comments
 from comments import signals
+from comments import utils
 from comments.views.utils import next_redirect, confirmation_view
 from comments.utils import CommentPostBadRequest, lookup_content_object
 
 COMMENT_MODEL = comments.get_model()
 COMMENT_FORM = comments.get_form()
 
+def view(request, comment_pk=None, *args, **kwargs):
+    comment_url = utils.get_comment_url(comment_pk, request)
+    if comment_url:
+        return HttpResponseRedirect(comment_url)
+    else:
+        raise Http404
 
 @csrf_protect
 def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, next=None, *args, **kwargs):
@@ -134,7 +141,10 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
         if form.is_valid():
             # Save the comment and signal that it was saved
             form.save()
-            return next_redirect(request, fallback=next or comment_done, c=comment.pk)
+            # Get comment url
+            if not next:
+                next = utils.get_comment_url(comment_pk, request)
+            return next_redirect(request, fallback=next, c=comment.pk)
             #_get_pk_val()
         else:
             # If we got here, raise Bad Request error.
