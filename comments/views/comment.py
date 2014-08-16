@@ -23,11 +23,6 @@ COMMENT_MODEL = comments.get_model()
 COMMENT_FORM = comments.get_form()
 
 
-comment_done = confirmation_view(
-    template="comments/posted.html",
-    doc="""Display a "comment was posted" success page."""
-)
-
 @csrf_protect
 def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, next=None, *args, **kwargs):
     """
@@ -159,3 +154,8 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
             "form" : form,
             "title" : title
         })
+
+comment_done = confirmation_view(
+    template="comments/posted.html",
+    doc="""Display a "comment was posted" success page."""
+)
