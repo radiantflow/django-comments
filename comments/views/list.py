@@ -55,7 +55,7 @@ def list_comments(request, ctype=None, object_pk=None, root_only=True):
     if isinstance(ctype, ContentType) and object_pk:
 
         try:
-            root_qs = utils.get_query_set(ctype, object_pk, root_only=True)
+            root_qs = utils.get_query_set(ctype=ctype, object_pk=object_pk, root_only=True)
             sorter = CommentSorter(root_qs, request=request, anchor=COMMENTS_ANCHOR)
             paginator = Paginator(sorter.sort(), COMMENTS_PER_PAGE, request=request, anchor=COMMENTS_ANCHOR)
             root_qs = paginator.page(page)

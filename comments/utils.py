@@ -65,7 +65,14 @@ def lookup_content_object(comment_model, data):
 
 
 
-def get_query_set(ctype, object_pk, root_only=False, except_root=False, tree_ids=None):
+def get_query_set(ctype=None, object_pk=None, target=None, root_only=False, except_root=False, tree_ids=None):
+
+    if target:
+        ctype = ContentType.objects.get_for_model(target)
+        object_pk = force_text(target._get_pk_val())
+
+    if ctype is None or object_pk is None:
+        raise Exception('No ctype or object_pk supplied')
 
     import comments
     COMMENT_MODEL = comments.get_model()
@@ -123,7 +130,7 @@ def get_root_children(root_qs, ctype, object_pk):
             tree_ids.append(obj.tree_id)
 
     if tree_ids:
-        return get_query_set(ctype, object_pk, tree_ids=tree_ids, except_root=True)
+        return get_query_set(ctype=ctype, object_pk=object_pk, tree_ids=tree_ids, except_root=True)
 
     return None
 
