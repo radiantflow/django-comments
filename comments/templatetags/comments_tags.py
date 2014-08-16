@@ -2,6 +2,7 @@ from django import template
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.http import HttpResponse, Http404
 from django.utils.encoding import smart_text
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
@@ -206,7 +207,11 @@ class RenderCommentListNode(CommentListNode):
 
     def render(self, context):
         ctype, object_pk = self.get_target_ctype_pk(context)
-        return list_comments(context['request'], ctype=ctype, object_pk=object_pk).content
+        try:
+            return list_comments(context['request'], ctype=ctype, object_pk=object_pk).content
+        except Http404:
+            return ''
+
 
 class RecurseCommentsNode(template.Node):
     def __init__(self, template_nodes, queryset_var):
