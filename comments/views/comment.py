@@ -144,7 +144,7 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
             # Get comment url
             if not next:
                 next = utils.get_comment_url(comment_pk, request)
-            return next_redirect(request, fallback=next, c=comment.pk)
+            return next_redirect(request, fallback=next)
             #_get_pk_val()
         else:
             # If we got here, raise Bad Request error.
