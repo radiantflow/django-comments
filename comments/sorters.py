@@ -1,5 +1,8 @@
+from django.conf import settings
 from django.utils.datastructures import SortedDict
 from sorter.sortedset import SortedSet
+
+COMMENTS_ANCHOR = getattr(settings, 'COMMENTS_ANCHOR', 'comments')
 
 class CommentSorter(SortedSet):
     # Defaults, you probably want to specify these when you subclass
@@ -14,3 +17,8 @@ class CommentSorter(SortedSet):
             'verbose_name': 'Oldest',
         }),
     ])
+
+    def __init__(self, queryset, anchor=None, **kwargs):
+        if anchor is None:
+            anchor = COMMENTS_ANCHOR
+        super(CommentSorter, self).__init__(queryset=queryset, anchor=anchor, **kwargs)
