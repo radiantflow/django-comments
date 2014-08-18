@@ -97,11 +97,10 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
         # Make sure user has correct permissions to change the comment,
         # or return a 401 Unauthorized error.
         if new:
-            if not (request.user.has_perm("comments.add_comment")):
+            if not form.can_create():
                 return HttpResponse("Unauthorized", status=401)
         else:
-            if not (request.user == comment.user and request.user.has_perm("comments.change_comment")
-                 or request.user.has_perm("comments.can_moderate")):
+            if not form.can_edit():
                 return HttpResponse("Unauthorized", status=401)
 
         # Do we want to preview the comment?

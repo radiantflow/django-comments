@@ -256,9 +256,21 @@ class CommentForm(forms.ModelForm):
         except:
             return False
 
+    def can_create(self):
+        try:
+            return self.request.user.has_perm("comments.add_comment")
+        except:
+            return False
+
+    def can_change(self):
+        try:
+            return self.request.user.has_perm("comments.change_comment")
+        except:
+            return False
+
     def can_edit(self):
         try:
-            return self.request.user.has_perm("comments.can_moderate")
+            return (self.is_owner and self.can_change) or self.is_moderator()
         except:
             return False
 
