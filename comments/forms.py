@@ -221,6 +221,44 @@ class CommentForm(forms.ModelForm):
             raise forms.ValidationError(self.fields["honeypot"].label)
         return value
 
+
+    def is_new(self):
+        if self.instance:
+            return self.instance._get_pk_val() == None
+        else:
+            return True
+
+    def is_owner(self):
+        try:
+            return self.instance.user == self.request.user
+        except:
+            return False
+
+    def has_owner(self):
+        try:
+            return self.instance.user is None
+        except:
+            return False
+
+    def is_authenticated(self):
+        try:
+            return self.request.user.is_authenticated()
+        except:
+            return False
+
+    def is_moderator(self):
+        try:
+            return self.request.user.has_perm("comments.can_moderate")
+        except:
+            return False
+
+    def can_edit(self):
+        try:
+            return self.request.user.has_perm("comments.can_moderate")
+        except:
+            return False
+
+
     def visible_fields(self):
         """
         Returns a list of BoundField objects that aren't hidden fields.
@@ -228,8 +266,13 @@ class CommentForm(forms.ModelForm):
         """
         fields = []
         for field in self:
-            if self.request.user.is_authenticated() and field.name in ['user_name', 'user_email', 'user_url']:
-                continue
+            if field.name in ['user_name', 'user_email', 'user_url']:
+                if self.is_moderator():
+                    if self.is_new() or not self.has_owner():
+                        continue
+                elif self.is_authenticated():
+                    continue
+
             if not field.is_hidden:
                 fields.append(field)
 
