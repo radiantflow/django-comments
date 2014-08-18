@@ -2,6 +2,7 @@ import time
 from django import forms
 from django.forms.util import ErrorDict
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.utils.crypto import salted_hmac, constant_time_compare
 from django.utils.encoding import force_text
@@ -25,6 +26,7 @@ class CommentForm(forms.ModelForm):
     security_hash = forms.CharField(min_length=40, max_length=40, widget=forms.HiddenInput)
     parent_pk     = forms.IntegerField(required=False, widget=forms.HiddenInput)
 
+    user          = forms.ModelChoiceField(label=_("User"), required=False, queryset=get_user_model().objects.all())
     user_name     = forms.CharField(label=_("Name"), max_length=50)
     user_email    = forms.EmailField(label=_("Email address"))
     user_url      = forms.URLField(label=_("URL"), required=False)
@@ -36,7 +38,7 @@ class CommentForm(forms.ModelForm):
 
     class Meta:
         model = Comment
-        fields = ("user_name", "user_email", "user_url", "comment",
+        fields = ( "user", "user_name", "user_email", "user_url", "comment",
                   "timestamp", "security_hash", "honeypot")
 
     def __init__(self, data=None, request=None, *args, **kwargs):
@@ -166,6 +168,7 @@ class CommentForm(forms.ModelForm):
         return dict(
             content_type = ContentType.objects.get_for_model(self.target_object),
             object_pk    = force_text(self.target_object._get_pk_val()),
+            user_        = self.cleaned_data["user"],
             user_name    = self.cleaned_data["user_name"],
             user_email   = self.cleaned_data["user_email"],
             user_url     = self.cleaned_data["user_url"],
@@ -187,6 +190,7 @@ class CommentForm(forms.ModelForm):
         ).filter(
             content_type = new.content_type,
             object_pk = new.object_pk,
+            user = new.user,
             user_name = new.user_name,
             user_email = new.user_email,
             user_url = new.user_url,
@@ -266,7 +270,11 @@ class CommentForm(forms.ModelForm):
         """
         fields = []
         for field in self:
-            if field.name in ['user_name', 'user_email', 'user_url']:
+            if field.name == 'user':
+                if not self.is_moderator():
+                    continue
+
+            elif field.name in ['user_name', 'user_email', 'user_url']:
                 if self.is_moderator():
                     if self.is_new() or not self.has_owner():
                         continue
