@@ -27,8 +27,8 @@ class CommentForm(forms.ModelForm):
     parent_pk     = forms.IntegerField(required=False, widget=forms.HiddenInput)
 
     user          = forms.ModelChoiceField(label=_("User"), required=False, queryset=get_user_model().objects.all())
-    user_name     = forms.CharField(label=_("Name"), max_length=50)
-    user_email    = forms.EmailField(label=_("Email address"))
+    user_name     = forms.CharField(label=_("Name"), max_length=50, required=False)
+    user_email    = forms.EmailField(label=_("Email address"), required=False)
     user_url      = forms.URLField(label=_("URL"), required=False)
     comment       = forms.CharField(label=_('Comment'), widget=forms.Textarea,
                                     max_length=COMMENT_MAX_LENGTH)

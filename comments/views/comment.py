@@ -86,11 +86,6 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
     if request.POST:
         form_data = request.POST.copy()
 
-        if not form_data.get("user_name", ""):
-            form_data["user_name"] = request.user.get_full_name() or request.user.username
-        if not form_data.get("user_email"):
-            form_data["user_email"] = request.user.email
-
         next = form_data.get("next", next)
         form = COMMENT_FORM(data=form_data, instance=comment, request=request)
 
