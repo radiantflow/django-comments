@@ -4,8 +4,11 @@ from django.forms.util import ErrorDict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import models
 from django.utils.crypto import salted_hmac, constant_time_compare
 from django.utils.encoding import force_text
+from django.utils.html import escape
 from django.utils.text import get_text_list
 from django.utils import timezone
 from django.utils.translation import ungettext, ugettext, ugettext_lazy as _
@@ -43,7 +46,10 @@ class CommentForm(forms.ModelForm):
 
     def __init__(self, data=None, request=None, *args, **kwargs):
         self.request = request
-        super(CommentForm, self).__init__(data=data, *args, **kwargs)
+        self.parent_comment = None
+        self.target_object = None
+        instance = self.get_comment_object(**kwargs)
+        super(CommentForm, self).__init__(data=data, instance=instance)
         # initiate the form with security data if no data was passed in.
         if not data:
             self.initial.update(self.generate_security_data())
@@ -127,23 +133,59 @@ class CommentForm(forms.ModelForm):
         return salted_hmac(key_salt, value).hexdigest()
 
 
-    def get_comment_object(self):
+    def get_comment_object(self, **kwargs):
         """
-        Return a new (unsaved) comment object based on the information in this
-        form. Assumes that the form is already validated and will throw a
-        ValueError if not.
+        Return an existing or new (unsaved) comment object based on the information in this
+        form.
 
-        Does not set any of the fields that would come from a Request object
-        (i.e. ``user`` or ``ip_address``).
         """
-        if not self.is_valid():
-            raise ValueError("get_comment_object may only be called on valid forms")
 
-        CommentModel = self.get_comment_model()
-        new = CommentModel(**self.get_comment_create_data())
-        new = self.check_for_duplicate_comment(new)
+        #if not self.is_valid():
+        #    raise ValueError("get_comment_object may only be called on valid forms")
 
-        return new
+
+        COMMENT_MODEL = self.get_comment_model()
+
+        if kwargs.get('comment_pk'):
+            return COMMENT_MODEL.objects.get(pk=kwargs['comment_pk'], site__pk=settings.SITE_ID)
+
+        if kwargs.get('parent_pk'):
+            self.parent_comment = COMMENT_MODEL.objects.get(pk=kwargs['parent_pk'], site__pk=settings.SITE_ID)
+            self.target_object = self.parent_comment.content_object
+
+        else:
+            ctype = kwargs.get('ctype')
+            object_pk = kwargs.get('object_pk')
+            if ctype and object_pk:
+                try:
+                    model = models.get_model(*ctype.split(".", 1))
+                    self.target_object = model._default_manager.get(pk=object_pk)
+                    # model._default_manager.using(using).get(pk=object_pk)
+
+                except TypeError:
+                    raise Exception(
+                        "Invalid content_type value: %r" % escape(ctype))
+                except AttributeError:
+                    raise Exception(
+                        "The given content-type %r does not resolve to a valid model." % \
+                            escape(ctype))
+                except ObjectDoesNotExist:
+                    raise Exception(
+                        "No object matching content-type %r and object PK %r exists." % \
+                            (escape(ctype), escape(object_pk)))
+                except (ValueError, ValidationError) as e:
+                    raise Exception(
+                        "Attempting go get content-type %r and object PK %r exists raised %s" % \
+                            (escape(ctype), escape(object_pk), e.__class__.__name__))
+
+        if self.target_object:
+            CommentModel = self.get_comment_model()
+            return CommentModel(**self.get_comment_create_data())
+
+        else:
+            raise Exception("No target found")
+
+
 
     def get_comment_model(self):
         """
@@ -153,6 +195,7 @@ class CommentForm(forms.ModelForm):
         """
         return Comment
 
+
     def get_comment_create_data(self):
         """
         Returns the dict of data to be used to create a comment. Subclasses in
@@ -160,23 +203,12 @@ class CommentForm(forms.ModelForm):
         method to add extra fields onto a custom comment model.
         """
 
-        parent_comment = None
-        parent_pk = self.cleaned_data.get("parent_pk")
-        if parent_pk:
-            parent_comment = self.get_comment_model().objects.get(pk=parent_pk)
-
         return dict(
             content_type = ContentType.objects.get_for_model(self.target_object),
             object_pk    = force_text(self.target_object._get_pk_val()),
-            user_        = self.cleaned_data["user"],
-            user_name    = self.cleaned_data["user_name"],
-            user_email   = self.cleaned_data["user_email"],
-            user_url     = self.cleaned_data["user_url"],
-            parent       = parent_comment,
-            comment      = self.cleaned_data["comment"],
-            submit_date  = timezone.now(),
+            parent       = self.parent_comment,
             site_id      = settings.SITE_ID,
-            is_public    = parent_comment and parent_comment.is_public or True,
+            is_public    = self.parent_comment and self.parent_comment.is_public or True,
             is_removed   = False,
         )
 

@@ -18,7 +18,7 @@ import comments
 from comments import signals
 from comments import utils
 from comments.views.utils import next_redirect, confirmation_view
-from comments.utils import CommentPostBadRequest, lookup_content_object
+from comments.utils import CommentPostBadRequest
 
 COMMENT_MODEL = comments.get_model()
 COMMENT_FORM = comments.get_form()
@@ -31,7 +31,7 @@ def view(request, comment_pk=None, *args, **kwargs):
         raise Http404
 
 @csrf_protect
-def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, next=None, *args, **kwargs):
+def edit(request, next=None, *args, **kwargs):
     """
     Edit or create a comment.
     Displays and processes the comment model form
@@ -44,54 +44,19 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
 
     is_ajax = request.GET.get('is_ajax') and '_ajax' or ''
 
-    if comment_pk:
-        try:
-            comment =  COMMENT_MODEL.objects.get(pk=comment_pk, site__pk=settings.SITE_ID)
-            target = comment.content_object
-            model = target.__class__
-            new = False
-        except COMMENT_MODEL.DoesNotExist:
-            return CommentPostBadRequest(
-                "Comment with PK %r does not exist." % \
-                    escape(comment_pk))
-
-    else:
-        data = {
-            'parent_pk': parent_pk,
-            'content_type': ctype,
-            'object_pk': object_pk,
-        }
-
-        response = lookup_content_object(COMMENT_MODEL, data)
-        if isinstance(response, HttpResponse):
-            return response
-        else:
-            target, parent_comment, model = response
-
-        new = True
-        content_type = ContentType.objects.get_for_model(target)
-        object_pk = force_text(target._get_pk_val())
-
-        if content_type is None or object_pk is None:
-            return CommentPostBadRequest("Missing content_type or object_pk field.")
-
-        comment = COMMENT_MODEL(
-            content_type=content_type,
-            object_pk=object_pk,
-            parent=parent_comment,
-            site_id=settings.SITE_ID,
-        )
-
-
     if request.POST:
         form_data = request.POST.copy()
 
         next = form_data.get("next", next)
-        form = COMMENT_FORM(data=form_data, instance=comment, request=request)
+
+        try:
+            form = COMMENT_FORM(data=form_data, request=request, **kwargs)
+        except COMMENT_MODEL.DoesNotExist:
+               return HttpResponse("Comment does not exist", status=404)
 
         # Make sure user has correct permissions to change the comment,
         # or return a 401 Unauthorized error.
-        if new:
+        if form.is_new():
             if not form.can_create():
                 return HttpResponse("Unauthorized", status=401)
         else:
@@ -124,7 +89,7 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
 
             return render_to_response(
                 template_list, {
-                    "comment_obj": comment,
+                    "comment_obj": form.instance,
                     "comment": form.data.get("comment", ""),
                     "form": form,
                     "next": next,
@@ -147,11 +112,16 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
     else:
         title = 'Post a reply'
         # Construct the initial comment form
-        form = COMMENT_FORM(instance=comment, request=request)
+        try:
+            form = COMMENT_FORM(request=request, **kwargs)
+        except COMMENT_MODEL.DoesNotExist:
+               return HttpResponse("Comment does not exist", status=404)
 
+
+        app_label, model_name = (form.instance.content_type.app_label, form.instance.content_type.model)
         template_list = [
-            "comments/%s_%s_edit_form%s.html" % tuple(str(model._meta).split(".") + [is_ajax]),
-            "comments/%s_edit_form%s.html" % (model._meta.app_label, is_ajax),
+            "comments/%s_%s_edit_form%s.html" % (app_label, model_name, is_ajax),
+            "comments/%s_edit_form%s.html" % (app_label, is_ajax),
             "comments/edit_form%s.html" % is_ajax,
         ]
         return TemplateResponse(request, template_list, {
