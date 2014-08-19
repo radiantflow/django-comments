@@ -24,7 +24,7 @@ COMMENT_MODEL = comments.get_model()
 COMMENT_FORM = comments.get_form()
 
 def view(request, comment_pk=None, *args, **kwargs):
-    comment_url = utils.get_comment_url(comment_pk, request)
+    comment_url = utils.get_comment_url(comment_pk=comment_pk, request=request)
     if comment_url:
         return HttpResponseRedirect(comment_url)
     else:
@@ -102,7 +102,7 @@ def edit(request, next=None, *args, **kwargs):
             result = form.save()
             # Get comment url
             if not next:
-                next = utils.get_comment_url(result._get_pk_val(), request)
+                next = utils.get_comment_url(comment_pk=result._get_pk_val(), request=request)
             return next_redirect(request, fallback=next)
             #_get_pk_val()
         else:

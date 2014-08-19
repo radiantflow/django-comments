@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_protect
 
 import comments
 from comments import signals
+from comments import utils
 from comments.views.utils import next_redirect, confirmation_view
 
 @csrf_protect
@@ -59,6 +60,8 @@ def delete(request, comment_id, next=None):
 
     # Render a form on GET
     else:
+        if next is None:
+            next = utils.get_parent_url(comment=comment, request=request)
         return render_to_response('comments/delete.html',
             {'comment': comment, "next": next},
             template.RequestContext(request)

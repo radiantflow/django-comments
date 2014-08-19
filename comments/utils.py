@@ -187,9 +187,14 @@ def get_comment_page(target, comment, request=None):
     return None
 
 
-def get_comment_url(comment_pk, request=None):
-    import comments
-    comment = get_object_or_404(comments.get_model(), pk=comment_pk, site__pk=settings.SITE_ID)
+def get_comment_url(comment_pk=None, comment=None, request=None):
+    if comment_pk:
+        import comments
+        comment = get_object_or_404(comments.get_model(), pk=comment_pk, site__pk=settings.SITE_ID)
+
+    if comment is None:
+        raise Exception('No comment supplied')
+
     top_level = get_top_level_comment(comment)
     target = top_level.content_object
     page = get_comment_page(target=target, comment=top_level, request=request)
@@ -205,10 +210,20 @@ def get_comment_url(comment_pk, request=None):
             url.update_query_data(page=page)
 
         full_url = url.get_full_path()
-        full_url += '#comment-%s' % comment_pk
+        full_url += '#comment-%s' % comment._get_pk_val()
 
     return full_url
 
+def get_parent_url(comment=None, comment_pk=None, request=None):
+    if comment_pk:
+        import comments
+        comment = get_object_or_404(comments.get_model(), pk=comment_pk, site__pk=settings.SITE_ID)
 
+    if comment is None:
+        raise Exception('No comment supplied')
 
-
+    if comment.parent:
+        return get_comment_url(comment=comment.parent, request=request)
+    else:
+        target = comment.content_object
+        return target.get_absolute_url() + '#comments'
