@@ -40,7 +40,7 @@ def _lookup_content_type(token):
 
 #def get_root_comments(ctype=None, object_pk=None, order_by='submit_date'):
 
-def list_comments(request, ctype=None, object_pk=None, root_only=True):
+def list_comments(request, ctype=None, object_pk=None, target=None, root_only=True):
 
     try:
         page = request.GET.get('page', 1)
@@ -53,8 +53,10 @@ def list_comments(request, ctype=None, object_pk=None, root_only=True):
     if isinstance(ctype, basestring):
         ctype = _lookup_content_type(ctype)
     if isinstance(ctype, ContentType) and object_pk:
-
         try:
+            if target is None:
+                target = ctype.model_class().objects.get(pk=object_pk)
+
             root_qs = utils.get_query_set(ctype=ctype, object_pk=object_pk, root_only=True)
             sorter = CommentSorter(root_qs, request=request, anchor=COMMENTS_ANCHOR)
             paginator = Paginator(sorter.sort(), COMMENTS_PER_PAGE, request=request, anchor=COMMENTS_ANCHOR)
@@ -91,6 +93,7 @@ def list_comments(request, ctype=None, object_pk=None, root_only=True):
         ]
         return render_to_response(template_search_list, {
             "comment_list" : comments,
+            "obj" : target,
             'request': request,
             'sort_dropdown': sorter.sort_dropdown,
 

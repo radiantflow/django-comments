@@ -3,6 +3,7 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse, Http404
+from django.template import RequestContext
 from django.utils.encoding import smart_text
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
@@ -173,6 +174,7 @@ class RenderCommentFormNode(CommentFormNode):
 
     def render(self, context):
         ctype, object_pk = self.get_target_ctype_pk(context)
+        request = context.get('request')
         if object_pk:
             template_search_list = [
                 "comments/%s/%s/form.html" % (ctype.app_label, ctype.model),
@@ -180,7 +182,8 @@ class RenderCommentFormNode(CommentFormNode):
                 "comments/form.html"
             ]
             context.push()
-            formstr = render_to_string(template_search_list, {"form" : self.get_form(context)}, context)
+            formstr = render_to_string(template_search_list, {"form" : self.get_form(context)}, context_instance=RequestContext(request))
+
             context.pop()
             return formstr
         else:
