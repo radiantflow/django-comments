@@ -213,7 +213,7 @@ def get_comment_url(comment_pk=None, comment=None, request=None, include_anchor=
         if include_anchor:
             full_url += '#comment-%s' % comment._get_pk_val()
 
-    return full_url
+        return full_url
 
 def get_parent_url(comment=None, comment_pk=None, request=None):
     if comment_pk:
