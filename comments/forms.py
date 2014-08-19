@@ -347,7 +347,7 @@ class CommentForm(forms.ModelForm):
         fields = []
         for field in self:
             if field.name == 'user':
-                if not self.is_moderator():
+                if self.is_new() or not self.is_moderator():
                     continue
 
             elif field.name in ['user_name', 'user_email', 'user_url']:
