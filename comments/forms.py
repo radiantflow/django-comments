@@ -44,11 +44,22 @@ class CommentForm(forms.ModelForm):
         fields = ( "user", "user_name", "user_email", "user_url", "comment",
                   "timestamp", "security_hash", "honeypot")
 
-    def __init__(self, data=None, request=None, *args, **kwargs):
+    def __init__(self,
+                 data=None,
+                 request=None,
+                 comment_pk=None,
+                 parent_pk=None,
+                 ctype=None,
+                 object_pk=object_pk,
+                 **kwargs):
         self.request = request
         self.parent_comment = None
         self.target_object = None
-        instance = self.get_comment_object(**kwargs)
+        instance = self.get_comment_object(comment_pk=comment_pk,
+                                           parent_pk=parent_pk,
+                                           ctype=ctype,
+                                           object_pk=object_pk,
+                                           **kwargs)
         super(CommentForm, self).__init__(data=data, instance=instance)
         # initiate the form with security data if no data was passed in.
         if not data:
@@ -138,7 +149,7 @@ class CommentForm(forms.ModelForm):
         return salted_hmac(key_salt, value).hexdigest()
 
 
-    def get_comment_object(self, **kwargs):
+    def get_comment_object(self, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, **kwargs):
         """
         Return an existing or new (unsaved) comment object based on the information in this
         form.
@@ -151,16 +162,14 @@ class CommentForm(forms.ModelForm):
 
         COMMENT_MODEL = self.get_comment_model()
 
-        if kwargs.get('comment_pk'):
-            return COMMENT_MODEL.objects.get(pk=kwargs['comment_pk'], site__pk=settings.SITE_ID)
+        if comment_pk:
+            return COMMENT_MODEL.objects.get(pk=comment_pk, site__pk=settings.SITE_ID)
 
-        if kwargs.get('parent_pk'):
-            self.parent_comment = COMMENT_MODEL.objects.get(pk=kwargs['parent_pk'], site__pk=settings.SITE_ID)
+        if parent_pk:
+            self.parent_comment = COMMENT_MODEL.objects.get(pk=parent_pk, site__pk=settings.SITE_ID)
             self.target_object = self.parent_comment.content_object
 
         else:
-            ctype = kwargs.get('ctype')
-            object_pk = kwargs.get('object_pk')
             if ctype and object_pk:
                 try:
                     model = models.get_model(*ctype.split(".", 1))
@@ -185,7 +194,7 @@ class CommentForm(forms.ModelForm):
 
         if self.target_object:
             CommentModel = self.get_comment_model()
-            return CommentModel(**self.get_comment_create_data())
+            return CommentModel(**self.get_comment_create_data(**kwargs))
 
         else:
             raise Exception("No target found")
@@ -201,7 +210,7 @@ class CommentForm(forms.ModelForm):
         return Comment
 
 
-    def get_comment_create_data(self):
+    def get_comment_create_data(self, **kwargs):
         """
         Returns the dict of data to be used to create a comment. Subclasses in
         custom comment apps that override get_comment_model can override this
