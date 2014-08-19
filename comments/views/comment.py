@@ -127,8 +127,7 @@ def edit(request, comment_pk=None, parent_pk=None, content_type=None, object_pk=
             "comments/edit_form%s.html" % is_ajax,
         ]
         return TemplateResponse(request, template_list, {
-            "form" : form,
-            "title" : title
+            "form" : form
         })
 
 comment_done = confirmation_view(

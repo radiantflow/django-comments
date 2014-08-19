@@ -128,8 +128,10 @@ class CommentFormNode(BaseCommentNode):
 
     def get_form(self, context):
         obj = self.get_object(context)
+        request = context.get('request')
         if obj:
-            return comments.get_form()(obj)
+            return comments.get_form()(target=obj, request=request)
+
         else:
             return None
 

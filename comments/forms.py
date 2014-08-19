@@ -50,12 +50,13 @@ class CommentForm(forms.ModelForm):
                  request=None,
                  comment_pk=None,
                  parent_pk=None,
+                 target=None,
                  ctype=None,
                  object_pk=object_pk,
                  **kwargs):
         self.request = request
         self.parent_comment = None
-        self.target_object = None
+        self.target_object = target
         instance = self.get_comment_object(comment_pk=comment_pk,
                                            parent_pk=parent_pk,
                                            ctype=ctype,
