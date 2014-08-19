@@ -31,7 +31,7 @@ def view(request, comment_pk=None, *args, **kwargs):
         raise Http404
 
 @csrf_protect
-def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, next=None, *args, **kwargs):
+def edit(request, comment_pk=None, parent_pk=None, content_type=None, object_pk=None, next=None, *args, **kwargs):
     """
     Edit or create a comment.
     Displays and processes the comment model form
@@ -53,7 +53,7 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
             form = COMMENT_FORM(data=form_data,
                                 comment_pk=comment_pk,
                                 parent_pk=parent_pk,
-                                ctype=ctype,
+                                ctype=content_type,
                                 object_pk=object_pk,
                                 request=request,
                                 **kwargs)
@@ -113,7 +113,7 @@ def edit(request, comment_pk=None, parent_pk=None, ctype=None, object_pk=None, n
             form = COMMENT_FORM(request=request,
                                 comment_pk=comment_pk,
                                 parent_pk=parent_pk,
-                                ctype=ctype,
+                                ctype=content_type,
                                 object_pk=object_pk,
                                 **kwargs)
         except COMMENT_MODEL.DoesNotExist:

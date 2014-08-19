@@ -4,6 +4,7 @@ from django.forms.util import ErrorDict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.core import urlresolvers
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.utils.crypto import salted_hmac, constant_time_compare
@@ -74,6 +75,22 @@ class CommentForm(forms.ModelForm):
             return _('Post new comment')
         else:
             return _('Edit comment')
+
+    def action_url(self):
+        kwargs = {}
+        if self.is_new():
+            if self.instance.parent:
+                kwargs['parent_pk'] = self.instance.parent._get_pk_val()
+            else:
+                content_type = self.instance.content_type
+                kwargs['content_type'] = '%s.%s' % (content_type.app_label, content_type.model)
+                kwargs['object_pk'] = self.target_object._get_pk_val()
+
+        else:
+            kwargs['comment_pk'] = self.instance._get_pk_val()
+
+        return urlresolvers.reverse("comments.views.comment.edit", kwargs=kwargs)
+
 
     def security_errors(self):
         """Return just those errors associated with security"""
