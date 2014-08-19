@@ -58,6 +58,11 @@ class CommentForm(forms.ModelForm):
         #self.fields["user_email"].widget.attrs["readonly"] = "readonly"
         #self.fields["user_url"].widget.attrs["placeholder"] = "Homepage"
 
+    def title(self):
+        if self.is_new():
+            return _('Post new comment')
+        else:
+            return _('Edit comment')
 
     def security_errors(self):
         """Return just those errors associated with security"""
