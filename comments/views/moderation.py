@@ -29,8 +29,7 @@ def flag(request, comment_id, next=None):
         if next is None:
            next = utils.get_comment_url(comment=comment, request=request)
         perform_flag(request, comment)
-        return next_redirect(request, fallback=next,
-            c=comment.pk)
+        return next_redirect(request, fallback=next)
 
     # Render a form on GET
     else:
@@ -61,8 +60,7 @@ def delete(request, comment_id, next=None):
         if next is None:
             next = utils.get_parent_url(comment=comment, request=request)
         perform_delete(request, comment)
-        return next_redirect(request, fallback=next,
-            c=comment.pk)
+        return next_redirect(request, fallback=next)
 
     # Render a form on GET
     else:
@@ -93,8 +91,7 @@ def approve(request, comment_id, next=None):
             next = utils.get_comment_url(comment=comment, request=request)
         # Flag the comment as approved.
         perform_approve(request, comment)
-        return next_redirect(request, fallback=next,
-            c=comment.pk)
+        return next_redirect(request, fallback=next)
 
     # Render a form on GET
     else:

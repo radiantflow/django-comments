@@ -187,7 +187,7 @@ def get_comment_page(target, comment, request=None):
     return None
 
 
-def get_comment_url(comment_pk=None, comment=None, request=None):
+def get_comment_url(comment_pk=None, comment=None, request=None, include_anchor=True):
     if comment_pk:
         import comments
         comment = get_object_or_404(comments.get_model(), pk=comment_pk, site__pk=settings.SITE_ID)
@@ -210,7 +210,8 @@ def get_comment_url(comment_pk=None, comment=None, request=None):
             url.update_query_data(page=page)
 
         full_url = url.get_full_path()
-        full_url += '#comment-%s' % comment._get_pk_val()
+        if include_anchor:
+            full_url += '#comment-%s' % comment._get_pk_val()
 
     return full_url
 
@@ -224,6 +225,6 @@ def get_parent_url(comment=None, comment_pk=None, request=None):
 
     if comment.parent:
         return get_comment_url(comment=comment.parent, request=request)
-    else:
-        target = comment.content_object
-        return target.get_absolute_url() + '#comments'
+    elif comment:
+        url =  get_comment_url(comment=comment, request=request, include_anchor=False)
+        return url + '#comments'
