@@ -26,12 +26,16 @@ def flag(request, comment_id, next=None):
 
     # Flag on POST
     if request.method == 'POST':
+        if next is None:
+           next = utils.get_comment_url(comment=comment, request=request)
         perform_flag(request, comment)
-        return next_redirect(request, fallback=next or 'comments-flag-done',
+        return next_redirect(request, fallback=next,
             c=comment.pk)
 
     # Render a form on GET
     else:
+        if next is None:
+            next = utils.get_comment_url(comment=comment, request=request)
         return render_to_response('comments/flag.html',
             {'comment': comment, "next": next},
             template.RequestContext(request)
@@ -54,8 +58,10 @@ def delete(request, comment_id, next=None):
     # Delete on POST
     if request.method == 'POST':
         # Flag the comment as deleted instead of actually deleting it.
+        if next is None:
+            next = utils.get_parent_url(comment=comment, request=request)
         perform_delete(request, comment)
-        return next_redirect(request, fallback=next or 'comments-delete-done',
+        return next_redirect(request, fallback=next,
             c=comment.pk)
 
     # Render a form on GET
@@ -83,13 +89,17 @@ def approve(request, comment_id, next=None):
 
     # Delete on POST
     if request.method == 'POST':
+        if next is None:
+            next = utils.get_comment_url(comment=comment, request=request)
         # Flag the comment as approved.
         perform_approve(request, comment)
-        return next_redirect(request, fallback=next or 'comments-approve-done',
+        return next_redirect(request, fallback=next,
             c=comment.pk)
 
     # Render a form on GET
     else:
+        if next is None:
+            next = utils.get_comment_url(comment=comment, request=request)
         return render_to_response('comments/approve.html',
             {'comment': comment, "next": next},
             template.RequestContext(request)
