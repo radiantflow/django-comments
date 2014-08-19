@@ -63,9 +63,6 @@ def edit(request, next=None, *args, **kwargs):
             if not form.can_edit():
                 return HttpResponse("Unauthorized", status=401)
 
-        # Do we want to preview the comment?
-        preview = "preview" in form_data
-
         if form.security_errors():
             # NOTE: security hash fails!
             return CommentPostBadRequest(
@@ -73,18 +70,12 @@ def edit(request, next=None, *args, **kwargs):
                     escape(str(form.security_errors())))
 
         # If there are errors, or if a preview is requested
-        if form.errors or preview:
+        if form.errors:
             app_label, model_name = (form.instance.content_type.app_label, form.instance.content_type.model)
             template_list = [
-                # These first two exist for purely historical reasons.
-                # Django v1.0 and v1.1 allowed the underscore format for
-                # preview templates, so we have to preserve that format.
-                "comments/%s_%s_preview.html" % (app_label, model_name),
-                "comments/%s_preview.html" % app_label,
-                # Now the usual directory based template hierarchy.
-                "comments/%s/%s/preview.html" % (app_label, model_name),
-                "comments/%s/preview.html" % model_name,
-                "comments/preview.html",
+                "comments/%s_%s_edit_form%s.html" % (app_label, model_name, is_ajax),
+                "comments/%s_edit_form%s.html" % (app_label, is_ajax),
+                "comments/edit_form%s.html" % is_ajax,
             ]
 
             return render_to_response(
