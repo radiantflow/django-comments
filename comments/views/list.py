@@ -5,8 +5,9 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.shortcuts import render_to_response
+from django.shortcuts import render_to_response, render
 from django.template import RequestContext
+from django.template.response import TemplateResponse
 from django.template.loader import render_to_string
 from django.utils.html import escape
 from django.utils.encoding import smart_text
@@ -91,13 +92,13 @@ def list_comments(request, ctype=None, object_pk=None, target=None, root_only=Tr
             "comments/%s/list.html" % ctype.app_label,
             "comments/list.html"
         ]
-        return render_to_response(template_search_list, {
+
+        return TemplateResponse(request, template_search_list, {
             "comment_list" : comments,
             "obj" : target,
-            'request': request,
             'sort_dropdown': sorter.sort_dropdown,
-
         })
+
 
         #posts_output = render_to_string('posts/includes/' + template_file, {
         #'posts': posts,

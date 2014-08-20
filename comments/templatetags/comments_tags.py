@@ -213,7 +213,8 @@ class RenderCommentListNode(CommentListNode):
     def render(self, context):
         ctype, object_pk = self.get_target_ctype_pk(context)
         try:
-            return list_comments(context['request'], ctype=ctype, object_pk=object_pk).content
+            response =  list_comments(context['request'], ctype=ctype, object_pk=object_pk)
+            return response.render()
         except Http404:
             return ''
 
