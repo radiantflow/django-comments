@@ -237,3 +237,17 @@ class CommentFlag(models.Model):
         if self.flag_date is None:
             self.flag_date = timezone.now()
         super(CommentFlag, self).save(*args, **kwargs)
+
+
+class CommentMixin(models.Model):
+    comments = generic.GenericRelation(Comment, object_id_field='object_pk', content_type_field='content_type')
+
+    @property
+    def comment_count(self):
+        try:
+            return self.comments.count()
+        except:
+            return 0
+
+    class Meta:
+        abstract = True
