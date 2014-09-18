@@ -7,6 +7,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.functional import cached_property
 from mptt.models import MPTTModel, TreeForeignKey
 
 from comments.managers import CommentManager
@@ -240,9 +241,14 @@ class CommentFlag(models.Model):
 
 
 class CommentMixin(models.Model):
-    comments = generic.GenericRelation(Comment, object_id_field='object_pk', content_type_field='content_type')
+    comments_all = generic.GenericRelation(Comment, object_id_field='object_pk', content_type_field='content_type')
+    #str(self.comments.filter(is_public=True, is_removed=False).query)
 
     @property
+    def comments(self):
+        return self.comments_all.filter(is_public=True, is_removed=False)
+
+    @cached_property
     def comment_count(self):
         try:
             return self.comments.count()
