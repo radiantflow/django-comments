@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.utils.translation import ungettext, ugettext, ugettext_lazy as _
 
 from comments.models import Comment, CommentFlag
-from comments import signals
+
 from comments.utils import CommentPostBadRequest
 
 COMMENT_MAX_LENGTH = getattr(settings,'COMMENT_MAX_LENGTH', 3000)
@@ -379,6 +379,7 @@ class CommentForm(forms.ModelForm):
 
         # Signal that the comment is about to be saved
         if send_signals:
+            from comments import signals
             if new:
                 signal_responses = signals.comment_will_be_posted.send(
                     sender=self.instance.__class__,
