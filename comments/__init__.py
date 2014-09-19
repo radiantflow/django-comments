@@ -4,7 +4,6 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
 
 from comments.models import Comment
-from comments.forms import CommentForm
 
 DEFAULT_COMMENTS_APP = 'comments'
 
@@ -47,6 +46,7 @@ def get_form():
     """
     Returns the comment ModelForm class.
     """
+    from comments.forms import CommentForm
     if get_comment_app_name() != DEFAULT_COMMENTS_APP and hasattr(get_comment_app(), "get_form"):
         return get_comment_app().get_form()
     else:
